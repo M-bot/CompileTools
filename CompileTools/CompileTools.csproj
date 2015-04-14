@@ -44,6 +44,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ArchiveFile.cs" />
     <Compile Include="ArchiveMethod.cs" />
     <Compile Include="ConversionMethod.cs" />
     <Compile Include="GMP200.cs" />

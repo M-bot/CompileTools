@@ -11,19 +11,5 @@ namespace CompileTools
     {
         public abstract void Pack(ArchiveFile[] input, Stream output);
         public abstract ArchiveFile[] Unpack(Stream input, bool recur);
-
-        public class ArchiveFile
-        {
-            public Stream File;
-            public string FileName;
-            public string FileDirectory;
-
-            public ArchiveFile(Stream file, string fileName, string fileDirectory)
-            {
-                File = file;
-                FileName = fileName;
-                FileDirectory = fileDirectory;
-            }
-        }
     }
 }

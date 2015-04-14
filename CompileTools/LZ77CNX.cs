@@ -195,44 +195,25 @@ namespace CompileTools
             int compressedSize = ReadBigEndianInt32(input);
             int decompressedSize = ReadBigEndianInt32(input);
 
-            // Console.WriteLine("Expecting a decompressed size of " + decompressedSize + " and a compressed size of " + compressedSize);
-
             byte[] result = new byte[decompressedSize];
 
             long currentPointer = 0;
 
-            bool error = false;
-            try
+            while (currentPointer < result.Length)
             {
-                while (currentPointer < result.Length)
+                byte header = (byte)input.ReadByte();
+                byte[] decodedHeaders = UncombineOps(header);
+
+                foreach (byte opNum in decodedHeaders)
                 {
-                    byte header = (byte)input.ReadByte();
-                    byte[] decodedHeaders = UncombineOps(header);
-
-                    // Console.WriteLine("[{0:X8}] Found headers: " + string.Join(", ", decodedHeaders), input.Position - 1);
-
-                    foreach (byte opNum in decodedHeaders)
-                    {
-                        // Console.WriteLine("Before operation " + opNum + ", pointer at {0:X8}.", currentPointer);
-                        OpFactories[opNum](input).ReadInto(result, ref currentPointer);
-                        if (opNum == FLAG_SKIP) // This is kinda funky, but you ignore all the remaining Ops if you get a skip flag.
-                            break;
-                    }
-
-                    // Console.ReadLine();
+                    OpFactories[opNum](input).ReadInto(result, ref currentPointer);
+                    if (opNum == FLAG_SKIP) // This is kinda funky, but you ignore all the remaining Ops if you get a skip flag.
+                        break;
                 }
-            }
-            catch (Exception ex)
-            {
-                // Dump what we have
-                output.Write(result, 0, (int)Math.Min(result.Length, currentPointer));
-                error = true;
 
-                Console.WriteLine("Error, dumping data early. Got to {0:X8}.", currentPointer);
             }
 
-            if (!error)
-                output.Write(result, 0, result.Length);
+            output.Write(result, 0, result.Length);
         }
 
         // A Match Struct is returned by FindMatch() when it finds an Offset and Length pair.
