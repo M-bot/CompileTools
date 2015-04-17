@@ -44,9 +44,11 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ArchiveFile.cs" />
+    <Compile Include="FileIndex.cs" />
+    <Compile Include="ReferenceFile.cs" />
     <Compile Include="ArchiveMethod.cs" />
     <Compile Include="ConversionMethod.cs" />
+    <Compile Include="MLK.cs" />
     <Compile Include="GMP200.cs" />
     <Compile Include="Method.cs" />
     <Compile Include="FLDF0200.cs" />

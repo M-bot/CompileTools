@@ -14,7 +14,8 @@ namespace CompileTools.CLI
 {
     class Program
     {
-        public static ArchiveMethod archiver = new FLDF0200();
+        public static MLK mlk = new MLK();
+        public static FLDF0200 fld = new FLDF0200();
         public static CompressionMethod compressor = new LZ77CNX();
         public static ConversionMethod converter = new GMP200();
 
@@ -83,6 +84,13 @@ namespace CompileTools.CLI
             if (file.StartsWith("\"") && file.EndsWith("\""))
                 file = file.Substring(1, file.Length - 1);
 
+            string ext = Path.GetExtension(file).ToLower();
+            if(ext != ".gmp" && ext != ".mid")
+            {
+                Console.WriteLine("These are not the formats you are looking for... Only GMP or MID files please!");
+                return;
+            }
+
             string outputFile = Path.GetFileNameWithoutExtension(file) + ".cnx";
 
             FileStream input, output;
@@ -129,14 +137,13 @@ namespace CompileTools.CLI
             if (file.StartsWith("\"") && file.EndsWith("\""))
                 file = file.Substring(1, file.Length - 1);
 
-            string outputFile = Path.GetFileNameWithoutExtension(file) + ".gmp";
 
-            FileStream input, output;
+            ReferenceFile input;
+            Stream output = null;
 
             try
             {
-                input = new FileStream(file, FileMode.Open);
-                output = new FileStream(outputFile, FileMode.Create);
+                input = new ReferenceFile(new FileStream(file, FileMode.Open), Path.GetFileName(file), Path.GetDirectoryName(file));
             }
             catch (Exception ex)
             {
@@ -146,9 +153,13 @@ namespace CompileTools.CLI
 
             try
             {
-                compressor.Decompress(input, output);
+                ReferenceFile outputFile = compressor.Decompress(input);
+                output = new FileStream(outputFile.FileDirectory + "/" + outputFile.FileName, FileMode.Create);
+                outputFile.File.Seek(0, SeekOrigin.Begin);
+                for (int x = 0; x < outputFile.File.Length; x++)
+                    output.WriteByte((byte)outputFile.File.ReadByte());
 
-                Console.WriteLine("Decompression of " + input.Length + " bytes complete, expanded file is " + output.Length + " bytes.");
+                Console.WriteLine("Decompression of " + input.File.Length + " bytes complete, expanded file is " + outputFile.File.Length + " bytes.");
             }
             catch (Exception ex)
             {
@@ -158,8 +169,8 @@ namespace CompileTools.CLI
             }
             finally
             {
-                input.Close();
-                output.Close();
+                input.File.Close();
+                if(output != null) output.Close();
             }
 
         }
@@ -168,7 +179,7 @@ namespace CompileTools.CLI
         {
             if (inputs.Trim().Length == 0)
             {
-                Console.WriteLine("Error: Pack command currently not implemented.");
+                Console.WriteLine("Error: Pack command currently not implemented. Use Flame's for now.");
                 return;
             }
 
@@ -184,10 +195,17 @@ namespace CompileTools.CLI
             }
 
             bool recur = false;
+            bool decomp = false;
 
             if (inputs.StartsWith("-r"))
             {
                 recur = true;
+                inputs = inputs.Substring(2).Trim();
+            }
+
+            if (inputs.StartsWith("-d"))
+            {
+                decomp = true;
                 inputs = inputs.Substring(2).Trim();
             }
 
@@ -208,12 +226,17 @@ namespace CompileTools.CLI
                 return;
             }
 
-            ArchiveFile[] files = archiver.Unpack(input, recur);
-            foreach (ArchiveFile outputFile in files)
+            ReferenceFile[] files = new ReferenceFile[0];
+
+            string ext = Path.GetExtension(file).ToLower();
+            if (ext == ".mlk") files = mlk.Unpack(input, recur, decomp);
+            else files = fld.Unpack(input, recur, decomp);
+
+            foreach (ReferenceFile outputFile in files)
             {
                 try
                 {
-                    string dir = Path.Combine("Unpacked", outputFile.FileDirectory);
+                    string dir = Path.Combine("Unpacked/", outputFile.FileDirectory);
 
                     if (!Directory.Exists(dir))
                         Directory.CreateDirectory(dir);

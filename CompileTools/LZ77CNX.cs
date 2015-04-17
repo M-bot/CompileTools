@@ -186,14 +186,13 @@ namespace CompileTools
             return res;
         }
 
-        public override void Decompress(Stream input, Stream output)
+        public override ReferenceFile Decompress(ReferenceFile input)
         {
-            // Might want to check that header is GMP\x02CNX\x10
-            byte[] junk = new byte[8];
-            input.Read(junk, 0, 8);
+            input.File.Seek(0, SeekOrigin.Begin);
+            string fileExt = ReadString(input.File, 8).Substring(4, 3);
 
-            int compressedSize = ReadBigEndianInt32(input);
-            int decompressedSize = ReadBigEndianInt32(input);
+            int compressedSize = ReadBigEndianInt32(input.File);
+            int decompressedSize = ReadBigEndianInt32(input.File);
 
             byte[] result = new byte[decompressedSize];
 
@@ -201,19 +200,20 @@ namespace CompileTools
 
             while (currentPointer < result.Length)
             {
-                byte header = (byte)input.ReadByte();
+                byte header = (byte)input.File.ReadByte();
                 byte[] decodedHeaders = UncombineOps(header);
 
                 foreach (byte opNum in decodedHeaders)
                 {
-                    OpFactories[opNum](input).ReadInto(result, ref currentPointer);
+                    OpFactories[opNum](input.File).ReadInto(result, ref currentPointer);
                     if (opNum == FLAG_SKIP) // This is kinda funky, but you ignore all the remaining Ops if you get a skip flag.
                         break;
                 }
 
             }
-
-            output.Write(result, 0, result.Length);
+            ReferenceFile output = new ReferenceFile(new MemoryStream(), Path.GetFileNameWithoutExtension(input.FileName) + "." + fileExt, input.FileDirectory);
+            output.File.Write(result, 0, result.Length);
+            return output;
         }
 
         // A Match Struct is returned by FindMatch() when it finds an Offset and Length pair.

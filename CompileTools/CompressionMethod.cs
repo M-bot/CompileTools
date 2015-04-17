@@ -10,6 +10,6 @@ namespace CompileTools
     public abstract class CompressionMethod : Method
     {
         public abstract void Compress(Stream input, Stream output);
-        public abstract void Decompress(Stream input, Stream output);
+        public abstract ReferenceFile Decompress(ReferenceFile input);
     }
 }
