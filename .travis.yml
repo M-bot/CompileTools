@@ -1,14 +1,15 @@
 language: csharp
 solution: CompileTools.sln
 before_deploy:
-  - "cd /home/travis/build/M-bot/CompileTools/CompileTools.CLI/bin/Release/"
-  - "zip CompileTools CompileTools.exe CompileTools.CLI.exe"
+- cd /home/travis/build/M-bot/CompileTools/CompileTools.CLI/bin/Release/
+- zip CompileTools CompileTools.exe CompileTools.CLI.exe
 deploy:
   provider: releases
-  api_key:
-    secure: t/LmjrSkoE9NRGP1s/lH1TWNFFzDqP2wY2trD+ukI5MZd+v4KaZfudCNRSsCGa6PssBPpCydfBZFUcBLctl85+7mYzhcrP5jqPmR8mY4o8jAVAQsRaBTLOWgNuVoTa4McYPgvaIzYx95zWd/wFmb8pI/Bhd8ClpB6OUDFY68nd0=
   file: "/home/travis/build/M-bot/CompileTools/CompileTools.CLI/bin/Release/CompileTools.zip"
   skip_cleanup: true
   on:
     repo: M-bot/CompileTools
     tags: true
+  user: "M-bot"
+  password:
+    secure: YFWeH2Xh/rpHUzUHBrQqY/EbC3Pol+G+lJ7zuhSrdTQq70yl0HjwvikPArOOMR7hvmNLzxnuw6K+XI2WX4b/JL72C4lsoxLeUgi2M45H+47hltY2aoF66oHdfbjwoni36j+vBzLvuVgm7Q+2ZrYnPp/uMYJGM9M2UhDkzm2n64Q=
