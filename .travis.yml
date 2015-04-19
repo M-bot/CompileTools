@@ -1,2 +1,12 @@
 language: csharp
 solution: CompileTools.sln
+  - "cd /home/travis/build/M-bot/CompileTools/CompileTools.CLI/bin/Release/"
+  - "zip CompileTools CompileTools.exe CompileTools.CLI.exe"
+deploy:
+  provider: releases
+  api_key:
+    secure: t/LmjrSkoE9NRGP1s/lH1TWNFFzDqP2wY2trD+ukI5MZd+v4KaZfudCNRSsCGa6PssBPpCydfBZFUcBLctl85+7mYzhcrP5jqPmR8mY4o8jAVAQsRaBTLOWgNuVoTa4McYPgvaIzYx95zWd/wFmb8pI/Bhd8ClpB6OUDFY68nd0=
+  file: "/home/travis/build/M-bot/CompileTools/CompileTools.CLI/bin/Release/CompileTools.zip"
+  on:
+    repo: M-bot/CompileTools
+    tags: true
