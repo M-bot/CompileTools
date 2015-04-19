@@ -24,7 +24,7 @@ namespace CompileTools
             return head.Equals("FLDF0200");
         }
 
-        public override void Pack(ReferenceFile[] input, Stream output)
+        public override void Pack(FileReference[] input, Stream output)
         {
             int dirLength = (int)(Math.Ceiling(input[0].FileDirectory.Length/4.0) * 4);
             WriteString(output, "FLDF0200");
@@ -35,50 +35,50 @@ namespace CompileTools
 
             int filePointer = 20 + dirLength + 20 * input.Length;
 
-            foreach (ReferenceFile file in input)
+            foreach (FileReference file in input)
             {
                 WriteString(output, file.FileName, 12);
                 WriteInt32(output, filePointer);
-                WriteInt32(output, (int)file.File.Length);
-                filePointer += (int)file.File.Length;
+                WriteInt32(output, (int)file.Stream.Length);
+                filePointer += (int)file.Stream.Length;
             }
 
-            foreach (ReferenceFile file in input)
+            foreach (FileReference file in input)
             {
-                for (int y = 0; y < file.File.Length; y++)
+                for (int y = 0; y < file.Stream.Length; y++)
                 {
-                    output.WriteByte((byte)file.File.ReadByte());
+                    output.WriteByte((byte)file.Stream.ReadByte());
                 }
             }
         }
 
-        public override ReferenceFile[] Unpack(Stream input, bool recur, bool decomp)
+        public override FileReference[] Unpack(FileReference input, bool recur, bool decomp)
         {
-            string head = ReadString(input, 8);
-            int indexPointer = ReadInt32(input);
-            int indexNumber = ReadInt32(input);
-            int useless = ReadInt32(input);
-            string dir = ReadString(input, indexPointer - 0x14);
+            string head = ReadString(input.Stream, 8);
+            int indexPointer = ReadInt32(input.Stream);
+            int indexNumber = ReadInt32(input.Stream);
+            int useless = ReadInt32(input.Stream);
+            string dir = ReadString(input.Stream, indexPointer - 0x14);
             CompressionMethod decompressor = new LZ77CNX(); //Should be changed to go through a global list of compression methods
 
             List<FileIndex> indices = new List<FileIndex>();
             for (int x = 0; x < indexNumber; x++)
             {
-                indices.Add(new FileIndex(ReadString(input, 12), ReadInt32(input), ReadInt32(input)));
+                indices.Add(new FileIndex(ReadString(input.Stream, 12), ReadInt32(input.Stream), ReadInt32(input.Stream)));
             }
 
-            List<ReferenceFile> output = new List<ReferenceFile>();
+            List<FileReference> output = new List<FileReference>();
             for (int x = 0; x < indices.Count; x++) 
             {
                 FileIndex index = indices[x];
                 MemoryStream current = new MemoryStream();
                 for(int y = 0; y < index.FileSize; y++)
                 {
-                    current.WriteByte((byte)input.ReadByte());
+                    current.WriteByte((byte)input.Stream.ReadByte());
                 }
-                ReferenceFile outputFile = new ReferenceFile(current, index.FileName.Trim(), dir);
+                FileReference outputFile = new FileReference(current, index.FileName.Trim(), dir);
                 if (recur && Verify(current))
-                    output.AddRange(Unpack(current, recur, decomp));
+                    output.AddRange(Unpack(outputFile, recur, decomp));
                 else if(decomp)
                     output.Add(decompressor.Decompress(outputFile));
                 else
@@ -86,7 +86,7 @@ namespace CompileTools
                 
             }
 
-            return output.ToArray<ReferenceFile>();
+            return output.ToArray<FileReference>();
         }
     }
 }

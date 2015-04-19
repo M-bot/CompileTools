@@ -8,15 +8,15 @@ using System.IO;
 
 namespace CompileTools
 {
-    public class ReferenceFile
+    public class FileReference
     {
-        public Stream File;
+        public Stream Stream;
         public string FileName;
         public string FileDirectory;
 
-        public ReferenceFile(Stream file, string fileName, string fileDirectory)
+        public FileReference(Stream stream, string fileName, string fileDirectory)
         {
-            File = file;
+            Stream = stream;
             FileName = fileName;
             FileDirectory = fileDirectory;
         }

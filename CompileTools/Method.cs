@@ -96,5 +96,14 @@ namespace CompileTools
                 input.WriteByte((byte)0);
             }
         }
+
+        public static int CopyBytes(Stream input, Stream output, int num)
+        {
+            for (int x = 0; x < num; x++)
+            {
+                output.WriteByte((byte)input.ReadByte());
+            }
+            return num;
+        }
     }
 }

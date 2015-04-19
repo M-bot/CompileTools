@@ -5,12 +5,15 @@ CompileTools is a romhacking program being developed mainly by M-bot, blacksmith
 
 ### Games
   * Wander Wonder
+  * Nayuta no Kiseki
 
 ### Compression
   * CNX
   
 ### Archives
   * FLD
+  * MLK
+  * IT3
   
 ### Textures
   * GMP

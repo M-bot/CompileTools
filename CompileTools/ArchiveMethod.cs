@@ -9,7 +9,7 @@ namespace CompileTools
 {
     public abstract class ArchiveMethod : Method
     {
-        public abstract void Pack(ReferenceFile[] input, Stream output);
-        public abstract ReferenceFile[] Unpack(Stream input, bool recur, bool decomp);
+        public abstract void Pack(FileReference[] input, Stream output);
+        public abstract FileReference[] Unpack(FileReference input, bool recur, bool decomp);
     }
 }

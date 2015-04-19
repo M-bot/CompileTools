@@ -186,13 +186,13 @@ namespace CompileTools
             return res;
         }
 
-        public override ReferenceFile Decompress(ReferenceFile input)
+        public override FileReference Decompress(FileReference input)
         {
-            input.File.Seek(0, SeekOrigin.Begin);
-            string fileExt = ReadString(input.File, 8).Substring(4, 3);
+            input.Stream.Seek(0, SeekOrigin.Begin);
+            string fileExt = ReadString(input.Stream, 8).Substring(4, 3);
 
-            int compressedSize = ReadBigEndianInt32(input.File);
-            int decompressedSize = ReadBigEndianInt32(input.File);
+            int compressedSize = ReadBigEndianInt32(input.Stream);
+            int decompressedSize = ReadBigEndianInt32(input.Stream);
 
             byte[] result = new byte[decompressedSize];
 
@@ -200,19 +200,19 @@ namespace CompileTools
 
             while (currentPointer < result.Length)
             {
-                byte header = (byte)input.File.ReadByte();
+                byte header = (byte)input.Stream.ReadByte();
                 byte[] decodedHeaders = UncombineOps(header);
 
                 foreach (byte opNum in decodedHeaders)
                 {
-                    OpFactories[opNum](input.File).ReadInto(result, ref currentPointer);
+                    OpFactories[opNum](input.Stream).ReadInto(result, ref currentPointer);
                     if (opNum == FLAG_SKIP) // This is kinda funky, but you ignore all the remaining Ops if you get a skip flag.
                         break;
                 }
 
             }
-            ReferenceFile output = new ReferenceFile(new MemoryStream(), Path.GetFileNameWithoutExtension(input.FileName) + "." + fileExt, input.FileDirectory);
-            output.File.Write(result, 0, result.Length);
+            FileReference output = new FileReference(new MemoryStream(), Path.GetFileNameWithoutExtension(input.FileName) + "." + fileExt, input.FileDirectory);
+            output.Stream.Write(result, 0, result.Length);
             return output;
         }
 

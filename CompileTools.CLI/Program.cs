@@ -16,6 +16,7 @@ namespace CompileTools.CLI
     {
         public static MLK mlk = new MLK();
         public static FLDF0200 fld = new FLDF0200();
+        public static IT3 it3 = new IT3();
         public static CompressionMethod compressor = new LZ77CNX();
         public static ConversionMethod converter = new GMP200();
 
@@ -138,12 +139,12 @@ namespace CompileTools.CLI
                 file = file.Substring(1, file.Length - 1);
 
 
-            ReferenceFile input;
+            FileReference input;
             Stream output = null;
 
             try
             {
-                input = new ReferenceFile(new FileStream(file, FileMode.Open), Path.GetFileName(file), Path.GetDirectoryName(file));
+                input = new FileReference(new FileStream(file, FileMode.Open), Path.GetFileName(file), Path.GetDirectoryName(file));
             }
             catch (Exception ex)
             {
@@ -153,13 +154,13 @@ namespace CompileTools.CLI
 
             try
             {
-                ReferenceFile outputFile = compressor.Decompress(input);
+                FileReference outputFile = compressor.Decompress(input);
                 output = new FileStream(outputFile.FileDirectory + "/" + outputFile.FileName, FileMode.Create);
-                outputFile.File.Seek(0, SeekOrigin.Begin);
-                for (int x = 0; x < outputFile.File.Length; x++)
-                    output.WriteByte((byte)outputFile.File.ReadByte());
+                outputFile.Stream.Seek(0, SeekOrigin.Begin);
+                for (int x = 0; x < outputFile.Stream.Length; x++)
+                    output.WriteByte((byte)outputFile.Stream.ReadByte());
 
-                Console.WriteLine("Decompression of " + input.File.Length + " bytes complete, expanded file is " + outputFile.File.Length + " bytes.");
+                Console.WriteLine("Decompression of " + input.Stream.Length + " bytes complete, expanded file is " + outputFile.Stream.Length + " bytes.");
             }
             catch (Exception ex)
             {
@@ -169,7 +170,7 @@ namespace CompileTools.CLI
             }
             finally
             {
-                input.File.Close();
+                input.Stream.Close();
                 if(output != null) output.Close();
             }
 
@@ -214,11 +215,12 @@ namespace CompileTools.CLI
             if (file.StartsWith("\"") && file.EndsWith("\""))
                 file = file.Substring(1, file.Length - 1);
 
-            FileStream input;
+            FileReference input;
+            Stream output = null;
 
             try
             {
-                input = new FileStream(file, FileMode.Open);
+                input = new FileReference(new FileStream(file, FileMode.Open), Path.GetFileName(file), Path.GetDirectoryName(file));
             }
             catch (Exception ex)
             {
@@ -226,13 +228,14 @@ namespace CompileTools.CLI
                 return;
             }
 
-            ReferenceFile[] files = new ReferenceFile[0];
+            FileReference[] files = new FileReference[0];
 
             string ext = Path.GetExtension(file).ToLower();
             if (ext == ".mlk") files = mlk.Unpack(input, recur, decomp);
-            else files = fld.Unpack(input, recur, decomp);
+            else if(ext == ".fld") files = fld.Unpack(input, recur, decomp);
+            else files = it3.Unpack(input, recur, decomp);
 
-            foreach (ReferenceFile outputFile in files)
+            foreach (FileReference outputFile in files)
             {
                 try
                 {
@@ -243,10 +246,10 @@ namespace CompileTools.CLI
 
                     using (FileStream current = new FileStream(dir + outputFile.FileName, FileMode.Create))
                     {
-                        outputFile.File.Seek(0, SeekOrigin.Begin);
+                        outputFile.Stream.Seek(0, SeekOrigin.Begin);
 
-                        for (int x = 0; x < outputFile.File.Length; x++)
-                            current.WriteByte((byte)outputFile.File.ReadByte());
+                        for (int x = 0; x < outputFile.Stream.Length; x++)
+                            current.WriteByte((byte)outputFile.Stream.ReadByte());
                     }
                 }
                 catch (Exception ex)
@@ -256,7 +259,7 @@ namespace CompileTools.CLI
                 }
             }
 
-            input.Close();
+            input.Stream.Close();
         }
 
         public static void ConvertCommand(string inputs)

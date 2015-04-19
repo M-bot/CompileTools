@@ -45,7 +45,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="FileIndex.cs" />
-    <Compile Include="ReferenceFile.cs" />
+    <Compile Include="IT3.cs" />
+    <Compile Include="FileReference.cs" />
     <Compile Include="ArchiveMethod.cs" />
     <Compile Include="ConversionMethod.cs" />
     <Compile Include="MLK.cs" />

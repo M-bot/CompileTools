@@ -21,7 +21,7 @@ namespace CompileTools
             return true; //Unverifiable 
         }
 
-        public override void Pack(ReferenceFile[] input, Stream output)
+        public override void Pack(FileReference[] input, Stream output)
         {
             /*
             int dirLength = (int)(Math.Ceiling(input[0].FileDirectory.Length/4.0) * 4);
@@ -50,28 +50,28 @@ namespace CompileTools
             }*/
         }
 
-        public override ReferenceFile[] Unpack(Stream input, bool recur, bool decomp)
+        public override FileReference[] Unpack(FileReference input, bool recur, bool decomp)
         {
-            int indexNumber = ReadInt16(input);
+            int indexNumber = ReadInt16(input.Stream);
             CompressionMethod decompressor = new LZ77CNX(); //Should be changed to go through a global list of compression methods
             
             List<FileIndex> indices = new List<FileIndex>();
             for (int x = 0; x < indexNumber; x++)
             {
-                indices.Add(new FileIndex("track" + (x+1) + ".cnx", ReadInt32(input), ReadInt32(input)));
-                if(x != indexNumber-1) input.ReadByte(); //Stupid spacer
+                indices.Add(new FileIndex("track" + (x+1) + ".cnx", ReadInt32(input.Stream), ReadInt32(input.Stream)));
+                if(x != indexNumber-1) input.Stream.ReadByte(); //Stupid spacer
             }
 
-            List<ReferenceFile> output = new List<ReferenceFile>();
+            List<FileReference> output = new List<FileReference>();
             for (int x = 0; x < indices.Count; x++) 
             {
                 FileIndex index = indices[x];
                 MemoryStream current = new MemoryStream();
                 for(int y = 0; y < index.FileSize; y++)
                 {
-                    current.WriteByte((byte)input.ReadByte());
+                    current.WriteByte((byte)input.Stream.ReadByte());
                 }
-                ReferenceFile outputFile = new ReferenceFile(current, index.FileName.Trim(), "");
+                FileReference outputFile = new FileReference(current, index.FileName.Trim(), "");
                 if (decomp)
                     output.Add(decompressor.Decompress(outputFile));
                 else
@@ -79,7 +79,7 @@ namespace CompileTools
                 
             }
 
-            return output.ToArray<ReferenceFile>();
+            return output.ToArray<FileReference>();
         }
     }
 }
