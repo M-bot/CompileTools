@@ -22,7 +22,21 @@ namespace CompileTools
 
         public override void Pack(FileReference[] input, Stream output)
         {
-            throw new NotImplementedException();
+            FileReference index = input[0];
+            for (int pointer = 0; pointer < index.Stream.Length;)
+            {
+                string filename = ReadString(index.Stream, ReadInt32(index.Stream));
+                FileReference found = FindFile(input, filename);
+                if(Path.GetExtension(filename) == ".itp")
+                {
+                    WriteString(output,"TEXI");
+                    WriteInt32(output, (int)found.Stream.Length + 36);
+                    WriteString(output, Path.GetFileNameWithoutExtension(filename), 36);
+                }
+                CopyBytes(found.Stream, output);
+                pointer += 4 + filename.Length;
+            }
+            
         }
 
         public override FileReference[] Unpack(FileReference input, bool recur, bool decomp)
@@ -44,7 +58,7 @@ namespace CompileTools
                 {
                     WriteString(current, fourcc);
                     WriteInt32(current, size);
-                    filename = "part" + count + "." + fourcc;
+                    filename = "part" + count++ + "." + fourcc;
                 }
                 else
                 {
@@ -53,7 +67,6 @@ namespace CompileTools
                 }
                 pointer += 8 + CopyBytes(input.Stream, current, size);
                 output.Add(new FileReference(current, filename, input.FileName + "/"));
-                WriteInt32(index.Stream,count++);
                 WriteInt32(index.Stream, filename.Length);
                 WriteString(index.Stream, filename);
             }

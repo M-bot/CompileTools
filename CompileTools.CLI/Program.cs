@@ -180,11 +180,42 @@ namespace CompileTools.CLI
         {
             if (inputs.Trim().Length == 0)
             {
-                Console.WriteLine("Error: Pack command currently not implemented. Use Flame's for now.");
+                Console.WriteLine("Usage: pack <it3|fld|mlk> <file>");
                 return;
+            } 
+            
+            if (inputs.StartsWith("it3"))
+            {
+                inputs = inputs.Substring(3).Trim();
+
+                // Get rid of any excess quotations
+                string file = inputs;
+                if (file.StartsWith("\"") && file.EndsWith("\""))
+                    file = file.Substring(1, file.Length - 1);
+
+                string dir = Path.GetDirectoryName(file) + "/" + Path.GetFileNameWithoutExtension(file) + "/";
+
+                string[] filenames = Directory.GetFiles(dir, "*", SearchOption.AllDirectories);
+                FileReference[] files2 = new FileReference[filenames.Length + 1];
+
+                files2[0] = new FileReference(new FileStream(file, FileMode.Open), file, "");
+                for (int x = 0; x < files2.Length - 1; x++)
+                {
+                    files2[x+1] = new FileReference(new FileStream(filenames[x], FileMode.Open), Path.GetFileName(filenames[x]), "");
+                }
+
+                dir = "Packed/";
+                if (!Directory.Exists(dir))
+                    Directory.CreateDirectory(dir);
+                
+                FileStream output = new FileStream(dir + Path.GetFileNameWithoutExtension(file), FileMode.Create);
+                it3.Pack(files2, output);
+                
+                output.Close();
             }
 
-            Console.WriteLine("Error: Pack command currently not implemented. Use Flame's for now.");
+
+
         }
 
         public static void UnpackCommand(string inputs)

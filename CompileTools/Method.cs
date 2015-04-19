@@ -105,5 +105,27 @@ namespace CompileTools
             }
             return num;
         }
+
+        public static int CopyBytes(Stream input, Stream output)
+        {
+            for (int x = 0; x < input.Length; x++)
+            {
+                output.WriteByte((byte)input.ReadByte());
+            }
+            return (int)input.Length;
+        }
+
+        public static FileReference FindFile(FileReference[] files, string filename)
+        {
+            FileReference found = null;
+            foreach(FileReference f in files)
+            {
+                if(f.FileName == filename)
+                {
+                    found = f;
+                }
+            }
+            return found;
+        }
     }
 }
