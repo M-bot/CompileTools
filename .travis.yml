@@ -2,7 +2,7 @@ language: csharp
 solution: CompileTools.sln
 before_deploy:
 - cd /home/travis/build/M-bot/CompileTools/CompileTools.CLI/bin/Release/
-- zip CompileTools CompileTools.exe CompileTools.CLI.exe
+- zip CompileTools CompileTools.dll CompileTools.CLI.exe
 deploy:
   provider: releases
   api_key:

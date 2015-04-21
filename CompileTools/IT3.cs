@@ -48,7 +48,7 @@ namespace CompileTools
             List<FileReference> output = new List<FileReference>(); 
             int count = 0;
             FileReference index = new FileReference(new MemoryStream(), input.FileName + ".index", "");
-            for(int pointer = 0; pointer < input.Stream.Length; pointer++)
+            for(int pointer = 0; pointer < input.Stream.Length; pointer++,count++)
             {
                 string fourcc = ReadString(input.Stream, 4);
                 int size = ReadInt32(input.Stream);
@@ -58,12 +58,13 @@ namespace CompileTools
                 {
                     WriteString(current, fourcc);
                     WriteInt32(current, size);
-                    filename = "part" + count++ + "." + fourcc;
+                    filename = "part" + count + "." + fourcc;
                 }
                 else
                 {
                     filename = ReadString(input.Stream, 36) + ".itp";
                     size -= 36;
+                    pointer += 36;
                 }
                 pointer += 8 + CopyBytes(input.Stream, current, size);
                 output.Add(new FileReference(current, filename, input.FileName + "/"));

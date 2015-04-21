@@ -5,7 +5,7 @@
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{43212A3B-9330-4710-B568-57EF414BDC8E}</ProjectGuid>
-    <OutputType>WinExe</OutputType>
+    <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>CompileTools</RootNamespace>
     <AssemblyName>CompileTools</AssemblyName>
@@ -31,6 +31,9 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
+  <PropertyGroup>
+    <StartupObject />
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -53,18 +56,8 @@
     <Compile Include="GMP200.cs" />
     <Compile Include="Method.cs" />
     <Compile Include="FLDF0200.cs" />
-    <Compile Include="GameDialog.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="GameDialog.Designer.cs">
-      <DependentUpon>GameDialog.cs</DependentUpon>
-    </Compile>
-    <Compile Include="CompileTools.cs" />
     <Compile Include="LZ77CNX.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <EmbeddedResource Include="GameDialog.resx">
-      <DependentUpon>GameDialog.cs</DependentUpon>
-    </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>

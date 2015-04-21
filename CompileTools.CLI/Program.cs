@@ -33,6 +33,13 @@ namespace CompileTools.CLI
                 new DelegateCommand("convert", ConvertCommand)
             });
 
+            if (args.Length > 0)
+            {
+                string dummyCommand = string.Join(" ", args);
+                root.Execute(dummyCommand);
+                return;
+            }
+
             while (true)
             {
                 Console.Write("> ");
@@ -51,8 +58,10 @@ namespace CompileTools.CLI
                 }
                 catch (Exception ex)
                 {
+                    Console.ForegroundColor = ConsoleColor.Red;
                     Console.WriteLine("An unspecified error occured while running this command.");
                     Console.WriteLine(ex.Message);
+                    Console.ForegroundColor = ConsoleColor.Green;
                 }
 
                 watch.Stop();
