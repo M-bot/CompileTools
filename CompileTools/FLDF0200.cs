@@ -16,6 +16,16 @@ namespace CompileTools
             }
         }
 
+        public override string[] Outputs
+        {
+            get { return new string[] { ".fld" }; }
+        }
+
+        public override string[] Inputs
+        {
+            get { return new string[] { "*" }; }
+        }
+
         public override bool Verify(Stream input)
         {
             input.Seek(0, SeekOrigin.Begin);

@@ -44,7 +44,10 @@
     <Compile Include="Commands\Command.cs" />
     <Compile Include="Commands\CommandParseException.cs" />
     <Compile Include="Commands\CommandRouter.cs" />
+    <Compile Include="Commands\CompressCommand.cs" />
+    <Compile Include="Commands\ConvertCommand.cs" />
     <Compile Include="Commands\DelegateCommand.cs" />
+    <Compile Include="Commands\PackCommand.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

@@ -17,15 +17,16 @@ namespace CompileTools.CLI.Commands
             get { return commandExec; }
         }
 
-        public DelegateCommand(string cmd, CommandExecutor commandExec)
-            : base(cmd)
+        public DelegateCommand(string cmd, string usage, CommandExecutor commandExec)
+            : base(cmd, usage)
         {
             this.commandExec = commandExec;
         }
 
-        public override void Execute(string remaining)
+        public override void Execute(string[] args)
         {
-            commandExec(remaining);
+            string dummyCommand = string.Join(" ", args);
+            commandExec(dummyCommand);
         }
     }
 }

@@ -14,8 +14,25 @@ namespace CompileTools
         {
             get;
         }
-
+        public abstract string[] Outputs
+        {
+            get;
+        }
+        public abstract string[] Inputs
+        {
+            get;
+        }
         public abstract bool Verify(Stream input);
+
+        public bool IsOutput(string s)
+        {
+            return Outputs.Contains(s) || Outputs.Contains("*");
+        }
+
+        public bool IsInput(string s)
+        {
+            return Inputs.Contains(s) || Outputs.Contains("*");
+        }
 
         public static void WriteBigEndianInt32(Stream output, int number)
         {

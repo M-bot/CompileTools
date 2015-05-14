@@ -8,49 +8,40 @@ namespace CompileTools.CLI
 {
     public class CommandRouter : Command
     {
-        private Command defaultCommand;
         private Dictionary<string, Command> routes;
 
-        public Command DefaultCommand
-        {
-            get { return defaultCommand; }
-        }
-
-        public CommandRouter(string command, Command defaultCommand)
-            : this(command, defaultCommand, new Command[0])
+        public CommandRouter(string command)
+            : this(command, new Command[0])
         {
         }
 
-        public CommandRouter(string command, Command defaultCommand, Command[] routes)
-            : base(command)
+        public CommandRouter(string command, Command[] routes)
+            : base(command, "")
         {
-            this.defaultCommand = defaultCommand;
             this.routes = new Dictionary<string, Command>();
 
             foreach (Command cmd in routes)
                 this.routes.Add(cmd.Name, cmd);
         }
 
-        public override void Execute(string remaining)
+        public override void Execute(string[] args)
         {
-            string trimmed = remaining.Trim();
-
-            // Execute the default command if no further commands are provided.
-            if (trimmed.Length == 0)
-                defaultCommand.Execute("");
-
-            // Determine our next command, removing any excess commands if there are any.
-            string actualCommand = trimmed, actualRemaining = "";
-            if (actualCommand.Contains(" "))
+            if(args[0].Length == 0 || args[0] == "help")
             {
-                actualCommand = actualCommand.Substring(0, actualCommand.IndexOf(" "));
-                actualRemaining = trimmed.Substring(trimmed.IndexOf(" ") + 1);
+                foreach (Command c in routes.Values)
+                {
+                    Console.WriteLine(c.Usage);
+                }
+                return;
             }
-
-            if (!routes.ContainsKey(actualCommand))
-                throw new CommandParseException("Command/Subcommand '" + actualCommand + "' does not exist or is currently hiding in a place where we can't find it.");
-
-            routes[actualCommand].Execute(actualRemaining);
+            string[] newArgs = new string[args.Length - 1];
+            System.Array.Copy(args, 1, newArgs, 0, newArgs.Length);
+            if (newArgs.Length == 0)
+            {
+                Console.WriteLine(routes[args[0]].Usage);
+                return;
+            }
+            routes[args[0]].Execute(newArgs);
         }
     }
 }

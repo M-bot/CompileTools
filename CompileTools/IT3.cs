@@ -15,6 +15,16 @@ namespace CompileTools
             get { return "IT3"; }
         }
 
+        public override string[] Outputs
+        {
+            get { return new string[] { ".it3" }; }
+        }
+
+        public override string[] Inputs
+        {
+            get { return new string[] { ".it3_index" }; }
+        }
+
         public override bool Verify(Stream input)
         {
             throw new NotImplementedException();
@@ -47,7 +57,7 @@ namespace CompileTools
             
             List<FileReference> output = new List<FileReference>(); 
             int count = 0;
-            FileReference index = new FileReference(new MemoryStream(), input.FileName + ".index", "");
+            FileReference index = new FileReference(new MemoryStream(), Path.GetFileNameWithoutExtension(input.FileName) + ".it3_index", "");
             for(int pointer = 0; pointer < input.Stream.Length; pointer++,count++)
             {
                 string fourcc = ReadString(input.Stream, 4);
@@ -67,7 +77,7 @@ namespace CompileTools
                     pointer += 36;
                 }
                 pointer += 8 + CopyBytes(input.Stream, current, size);
-                output.Add(new FileReference(current, filename, input.FileName + "/"));
+                output.Add(new FileReference(current, filename, Path.GetFileNameWithoutExtension(input.FileName) + "/"));
                 WriteInt32(index.Stream, filename.Length);
                 WriteString(index.Stream, filename);
             }

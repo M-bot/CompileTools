@@ -16,6 +16,16 @@ namespace CompileTools
             }
         }
 
+        public override string[] Outputs
+        {
+            get { return new string[] { ".mlk" }; }
+        }
+
+        public override string[] Inputs
+        {
+            get { return new string[] { ".cnx" }; }
+        }
+
         public override bool Verify(Stream input)
         {
             return true; //Unverifiable 

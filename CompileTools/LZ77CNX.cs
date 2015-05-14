@@ -33,6 +33,16 @@ namespace CompileTools
             get { return "LZ77-CNX"; }
         }
 
+        public override string[] Outputs
+        {
+            get { return new string[] { ".cnx" }; }
+        }
+
+        public override string[] Inputs
+        {
+            get { return new string[] { ".gmp", ".mid" }; }
+        }
+
         public override bool Verify(Stream input)
         {
             throw new NotImplementedException();

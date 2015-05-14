@@ -13,6 +13,15 @@ namespace CompileTools
         {
             get { return "GMP-200"; }
         }
+        public override string[] Outputs
+        {
+            get { return new string[] { ".gmp" }; }
+        }
+
+        public override string[] Inputs
+        {
+            get { return new string[] { ".bmp" }; }
+        }
         public override bool Verify(Stream input)
         {
             throw new NotImplementedException();
