@@ -16,7 +16,7 @@ namespace CompileTools.CLI.Commands
             string file = QuotationRemover(args[0]);
             string ext = Path.GetExtension(file).ToLower();
 
-            string method = args.Length > 1 ? "." + args[1] : ".gmp";
+            string method = args.Length > 1 ? "." + args[1] : ext;
             ConversionMethod converter = ConversionMethod.FindConvertor(method);
             string outputFile = Path.GetFileNameWithoutExtension(file) + method;
 

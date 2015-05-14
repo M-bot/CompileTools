@@ -15,7 +15,7 @@ namespace CompileTools
         {
             methods.Add(new IT3());
             //TODO: Add packing support for these
-            //methods.Add(new FLDF0200());
+            methods.Add(new FLDF0200());
             //methods.Add(new MLK());
         }
         public static ArchiveMethod FindArchiver(string method)

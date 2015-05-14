@@ -20,7 +20,7 @@ namespace CompileTools.CLI.Commands
             string file = QuotationRemover(args[0]);
             string ext = Path.GetExtension(file).ToLower();
 
-            string method = args.Length > 1 ? "." + args[1] : ".it3";
+            string method = args.Length > 1 ? "." + args[1] : ext;
             ArchiveMethod archiver = ArchiveMethod.FindArchiver(method);
             string outputFile = Path.GetFileNameWithoutExtension(file) + method;
 

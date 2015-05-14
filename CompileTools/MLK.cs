@@ -33,31 +33,7 @@ namespace CompileTools
 
         public override void Pack(FileReference[] input, Stream output)
         {
-            /*
-            int dirLength = (int)(Math.Ceiling(input[0].FileDirectory.Length/4.0) * 4);
-            WriteString(output, "FLDF0200");
-            WriteInt32(output, 20 + dirLength);
-            WriteInt32(output, input.Length);
-            WriteInt32(output, 0);
-            WriteString(output, input[0].FileDirectory, dirLength);
-
-            int filePointer = 20 + dirLength + 20 * input.Length;
-
-            foreach (ArchiveFile file in input)
-            {
-                WriteString(output, file.FileName, 12);
-                WriteInt32(output, filePointer);
-                WriteInt32(output, (int)file.File.Length);
-                filePointer += (int)file.File.Length;
-            }
-
-            foreach (ArchiveFile file in input)
-            {
-                for (int y = 0; y < file.File.Length; y++)
-                {
-                    output.WriteByte((byte)file.File.ReadByte());
-                }
-            }*/
+            // TODO: Finish packing
         }
 
         public override FileReference[] Unpack(FileReference input, bool recur, bool decomp)

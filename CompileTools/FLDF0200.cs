@@ -23,7 +23,7 @@ namespace CompileTools
 
         public override string[] Inputs
         {
-            get { return new string[] { "*" }; }
+            get { return new string[] { ".fld_index" }; }
         }
 
         public override bool Verify(Stream input)
@@ -36,6 +36,7 @@ namespace CompileTools
 
         public override void Pack(FileReference[] input, Stream output)
         {
+            FileReference index = input[0];
             int dirLength = (int)(Math.Ceiling(input[0].FileDirectory.Length/4.0) * 4);
             WriteString(output, "FLDF0200");
             WriteInt32(output, 20 + dirLength);
@@ -45,20 +46,23 @@ namespace CompileTools
 
             int filePointer = 20 + dirLength + 20 * input.Length;
 
-            foreach (FileReference file in input)
+            for (int pointer = 0; pointer < index.Stream.Length; )
             {
-                WriteString(output, file.FileName, 12);
+                string filename = ReadString(index.Stream, ReadInt32(index.Stream));
+                FileReference found = FindFile(input, filename);
+                WriteString(output, found.FileName, 12);
                 WriteInt32(output, filePointer);
-                WriteInt32(output, (int)file.Stream.Length);
-                filePointer += (int)file.Stream.Length;
+                WriteInt32(output, (int)found.Stream.Length);
+                filePointer += (int)found.Stream.Length;
+                pointer += 4 + filename.Length;
             }
 
-            foreach (FileReference file in input)
+            for (int pointer = 0; pointer < index.Stream.Length; )
             {
-                for (int y = 0; y < file.Stream.Length; y++)
-                {
-                    output.WriteByte((byte)file.Stream.ReadByte());
-                }
+                string filename = ReadString(index.Stream, ReadInt32(index.Stream));
+                FileReference found = FindFile(input, filename);
+                CopyBytes(found.Stream, output);
+                pointer += 4 + filename.Length;
             }
         }
 
@@ -78,6 +82,7 @@ namespace CompileTools
             }
 
             List<FileReference> output = new List<FileReference>();
+            FileReference master = new FileReference(new MemoryStream(), Path.GetFileNameWithoutExtension(input.FileName) + ".fld_index", "");
             for (int x = 0; x < indices.Count; x++) 
             {
                 FileIndex index = indices[x];
@@ -86,16 +91,18 @@ namespace CompileTools
                 {
                     current.WriteByte((byte)input.Stream.ReadByte());
                 }
-                FileReference outputFile = new FileReference(current, index.FileName.Trim(), dir);
+                FileReference outputFile = new FileReference(current, index.FileName.Trim(), Path.GetFileNameWithoutExtension(input.FileName) + "/" + dir);
                 if (recur && Verify(current))
                     output.AddRange(Unpack(outputFile, recur, decomp));
                 else if(decomp)
                     output.Add(decompressor.Decompress(outputFile));
                 else
                     output.Add(outputFile);
-                
+                WriteInt32(master.Stream, index.FileName.Length);
+                WriteString(master.Stream, index.FileName);
             }
 
+            output.Add(master);
             return output.ToArray<FileReference>();
         }
     }
