@@ -14,6 +14,7 @@ namespace CompileTools
         public static void Load()
         {
             methods.Add(new GMP200());
+            methods.Add(new ITV());
         }
         public static ConversionMethod FindConvertor(string method)
         {

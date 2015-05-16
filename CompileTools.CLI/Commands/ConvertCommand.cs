@@ -18,14 +18,14 @@ namespace CompileTools.CLI.Commands
 
             string method = args.Length > 1 ? "." + args[1] : ext;
             ConversionMethod converter = ConversionMethod.FindConvertor(method);
-            string outputFile = Path.GetFileNameWithoutExtension(file) + method;
+            string outputFile = Path.GetFileNameWithoutExtension(file);
 
             if (converter == null)
                 Console.WriteLine("These are not the formats we are looking for...");
             else if(converter.Inputs.Contains(ext))
-                Convert(file, outputFile, converter, true);
+                Convert(file, outputFile + converter.Outputs[0], converter, true);
             else if (converter.Outputs.Contains(ext))
-                Convert(file, outputFile, converter, false);
+                Convert(file, outputFile + converter.Inputs[0], converter, false);
             else
                 Console.WriteLine("These are not the formats we are looking for...");
         }

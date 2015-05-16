@@ -52,6 +52,7 @@
     <Compile Include="FileReference.cs" />
     <Compile Include="ArchiveMethod.cs" />
     <Compile Include="ConversionMethod.cs" />
+    <Compile Include="ITV.cs" />
     <Compile Include="MLK.cs" />
     <Compile Include="GMP200.cs" />
     <Compile Include="Method.cs" />
