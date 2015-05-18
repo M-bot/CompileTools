@@ -4,16 +4,32 @@
 CompileTools is a romhacking program being developed mainly by M-bot, blacksmithgu, and programmers at Heroes of Legend.
 
 ### Games
-  * Wander Wonder
   * Nayuta no Kiseki
+  * Wander Wonder
 
 ### Compression
   * CNX
   
 ### Archives
   * FLD
-  * MLK
-  * IT3
+  * IT3 (WIP)
+  * MLK (WIP)
   
-### Textures
+### Formats
   * GMP
+  * ITV (WIP)
+
+### Commands
+ * convert [file] [using]
+ * compress [file] [using]
+ * pack [file] [using]
+
+### Examples
+```
+ convert file.gmp       -> file.bmp
+ compress file.cnx      -> file.gmp
+ compress file.gmp      -> file.cnx
+ pack file.it3          -> file.it3_index + file (directory)
+ pack file.it3_index    -> file.it3
+ compress file.abc cnx  -> file.gmp
+```
