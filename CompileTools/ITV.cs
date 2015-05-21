@@ -4,6 +4,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.IO;
+using System.Drawing;
+using System.Drawing.Imaging;
 
 namespace CompileTools
 {
@@ -36,20 +38,20 @@ namespace CompileTools
             ReadString(input, 4);
             int numOfFrames = ReadInt16(input);
             ReadString(input, 8);
-            int numOfColors = ReadInt16(input) - 1;
+            int numOfColors = ReadInt16(input);
             ReadInt16(input);
             int width = ReadInt16(input);
             int height = ReadInt16(input);
             ReadInt16(input);
-            int importantColors = ReadInt16(input) - 1;
-            ReadString(input, 4);
+            int importantColors = ReadInt16(input);
+            //ReadString(input, 4);
 
             Console.WriteLine("Identity: " + identity);
             Console.WriteLine("Frames: " + numOfFrames);
             Console.WriteLine("Colors: " + numOfColors + " " + importantColors);
             Console.WriteLine("Dimensions: " + height + "px by " + width + "px");
 
-            MemoryStream palette = new MemoryStream();
+            Color[] colors = new Color[numOfColors];
             for (int i = 0; i < numOfColors; i++ )
             {
                 byte[] color = new byte[4];
@@ -57,34 +59,27 @@ namespace CompileTools
                 color[1] = (byte)input.ReadByte();
                 color[0] = (byte)input.ReadByte();
                 color[3] = (byte)input.ReadByte();
-                for (int j = 0; j < 4; j++)
-                    palette.WriteByte(color[j]);
+                colors[i] = Color.FromArgb(color[3], color[2], color[1], color[0]);
             }
             Console.WriteLine();
 
+            byte[,] image = new byte[height, width];
             input.Seek(0x45D, SeekOrigin.Begin);
             for (int i = 0; i < 10; i++)
             {
-                byte[,] image = new byte[height, width];
                 int x = 0, y = 0, dx = width / 2, dy = height / 2;
                 for (int j = 0; j < 4; j++ )
                 {
                     if (nextInt16(input) == -256)
                     {
-                        Console.WriteLine("Skip Frame: " + i + " Block: " + j);
+                        //Console.WriteLine("Skip Frame: " + i + " Block: " + j);
                         ReadInt16(input);
                     }
                     else
                     {
-                        byte[,] copy = readBlock(input, height / 2, width / 2);
-                        for (int k = 0; k < height / 2; k++)
-                        {
-                            for (int l = 0; l < width / 2; l++)
-                            {
-                                image[k + y, l + x] = copy[k, l];
-                            }
-                        }
-                        Console.WriteLine("Read Frame: " + i + " Block: " + j);
+                        Console.WriteLine("Block ("+i+","+j+") starts at 0x{0:X}", input.Position);
+                        readBlock(input, image, y, x, height / 2, width / 2);
+                        //Console.WriteLine("Read Frame: " + i + " Block: " + j);
                     }
 
                     if (x + dx >= width)
@@ -97,40 +92,19 @@ namespace CompileTools
                         x += dx;
                     }
                 }
-                 
-                // BMP header
-                WriteString(output, "BM");                  // ID field
-                WriteInt32(output, (int)input.Length);      // BMP size
-                WriteInt32(output, 0);                      // Unused
-                WriteInt32(output, numOfColors * 4 + 54);              // Offset where the pixel array can be found
 
-                // DIB header
-                WriteInt32(output, 0x28);                   // Number of bytes int the DIB header from this point
-                WriteInt32(output, width);                // Number of horizontal pixels
-                WriteInt32(output, height);                // Number of vertical pixels
-                WriteInt16(output, 1);                      // Number of color planes to be used
-                WriteInt16(output, 8);        // Number of bits per pixel
-                WriteInt32(output, 0);                      // No pixel array compression used
-                WriteInt32(output, height * width);             // Size of raw bitmap data including padding
-                WriteInt32(output, 0);                      // Print resolution of the iamge
-                WriteInt32(output, 0);                      // So useless in our case
-                WriteInt32(output, numOfColors);              // Number of colors in palette
-                WriteInt32(output, 0);                      // Number of important colors. 0 means all.
-
-                // Start of palette data
-                palette.Seek(0, SeekOrigin.Begin);
-                CopyBytes(palette, output);
-
-                // Start of bitmap data
+                Stream output2 = new FileStream("test/out" + i + ".png", FileMode.Create);
+                Bitmap b = new Bitmap(width, height, PixelFormat.Format32bppArgb);
                 for (int j = 0; j < height; j++)
                 {
                     for (int k = 0; k < width; k++)
                     {
-                        output.WriteByte(image[j, k]);
+                        b.SetPixel(k, j, colors[image[j, k]]);
                     }
                 }
-                output.Close();
-                output = new FileStream("out" + i + ".bmp", FileMode.Create);
+                b.Save(output2, ImageFormat.Png);
+                output2.Close();
+                first = false;
             }
         }
 
@@ -141,11 +115,12 @@ namespace CompileTools
             return x;
         }
 
-        public static byte[,] readBlock(Stream input, int height, int width)
+        static byte[, ,] lblocks = new byte[10000, 2, 2];
+        static bool first = true;
+        public static void readBlock(Stream input, byte[,] image, int oy, int ox, int height, int width)
         {
             input.ReadByte();
             int numOfBlocks = input.ReadByte();
-            Console.WriteLine(numOfBlocks);
             byte[, ,] blocks = new byte[numOfBlocks, 2, 2];
             for (int i = 0; i < numOfBlocks; i++)
             {
@@ -158,17 +133,21 @@ namespace CompileTools
                 }
             }
 
-            byte[,] image = new byte[height, width];
+
             int y = 0, x = 0;
+            int last = 0;
             for (int c = 0; c < height * width / 4; )
             {
                 int flag = input.ReadByte();
                 int move = 0;
+                bool copy = false;
                 if (flag == 255)
                 {
                     int amount = input.ReadByte();
                     move = amount;
                     c += amount;
+                    copy = true;
+                    flag = last;
                 }
                 else if (flag == 254)
                 {
@@ -179,18 +158,23 @@ namespace CompileTools
                 else
                 {
                     move = 1;
-                    for (int dy = 0; dy < 2; dy++)
-                    {
-                        for (int dx = 0; dx < 2; dx++)
-                        {
-                            image[dy + y, dx + x] = blocks[flag % 0x3F, dy, dx];
-                        }
-                    }
+                    copy = true;
                     c++;
                 }
 
                 for (int j = 0; j < move; j++)
                 {
+                    if (copy)
+                    {
+                        for (int dy = 0; dy < 2; dy++)
+                        {
+                            for (int dx = 0; dx < 2; dx++)
+                            {
+                                if (first || (!first && flag >= 0x3F))
+                                    image[oy + dy + y, ox + dx + x] = blocks[flag % 0x3F, dy, dx];
+                            }
+                        }
+                    }
                     if (x + 2 >= width)
                     {
                         y += 2;
@@ -201,8 +185,9 @@ namespace CompileTools
                         x += 2;
                     }
                 }
+                last = flag;
             }
-            return image;
+            lblocks = blocks;
         }
     }
 }
