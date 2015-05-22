@@ -39,49 +39,45 @@ namespace CompileTools
             int numOfFrames = ReadInt16(input);
             ReadString(input, 8);
             int numOfColors = ReadInt16(input);
-            ReadInt16(input);
+            int iden = ReadInt16(input);
             int width = ReadInt16(input);
             int height = ReadInt16(input);
             ReadInt16(input);
             int importantColors = ReadInt16(input);
             //ReadString(input, 4);
 
-            Console.WriteLine("Identity: " + identity);
+            Console.WriteLine("Identity: " + identity + " " + iden);
             Console.WriteLine("Frames: " + numOfFrames);
             Console.WriteLine("Colors: " + numOfColors + " " + importantColors);
             Console.WriteLine("Dimensions: " + height + "px by " + width + "px");
+            Console.WriteLine();
+
+            if(iden != 1543)
+            {
+                Console.WriteLine("Not supported :(");
+                return;
+            }
 
             Color[] colors = new Color[numOfColors];
             for (int i = 0; i < numOfColors; i++ )
             {
                 byte[] color = new byte[4];
-                color[2] = (byte)input.ReadByte();
-                color[1] = (byte)input.ReadByte();
                 color[0] = (byte)input.ReadByte();
+                color[1] = (byte)input.ReadByte();
+                color[2] = (byte)input.ReadByte();
                 color[3] = (byte)input.ReadByte();
-                colors[i] = Color.FromArgb(color[3], color[2], color[1], color[0]);
+                colors[i] = Color.FromArgb(color[3], color[0], color[1], color[2]);
             }
-            Console.WriteLine();
 
             byte[,] image = new byte[height, width];
-            input.Seek(0x45D, SeekOrigin.Begin);
-            for (int i = 0; i < 10; i++)
+            int pos = 0;
+            input.Seek(0x45E, SeekOrigin.Begin);
+            for (int i = 0; i < numOfFrames - 4; i++)
             {
                 int x = 0, y = 0, dx = width / 2, dy = height / 2;
                 for (int j = 0; j < 4; j++ )
                 {
-                    if (nextInt16(input) == -256)
-                    {
-                        //Console.WriteLine("Skip Frame: " + i + " Block: " + j);
-                        ReadInt16(input);
-                    }
-                    else
-                    {
-                        Console.WriteLine("Block ("+i+","+j+") starts at 0x{0:X}", input.Position);
-                        readBlock(input, image, y, x, height / 2, width / 2);
-                        //Console.WriteLine("Read Frame: " + i + " Block: " + j);
-                    }
-
+                    readBlock(input, image, j, i, y, x, height / 2, width / 2);
                     if (x + dx >= width)
                     {
                         y += dy;
@@ -104,35 +100,50 @@ namespace CompileTools
                 }
                 b.Save(output2, ImageFormat.Png);
                 output2.Close();
-                first = false;
+                pos += 0x3F;
+                pos %= 0x3F * 4;
             }
+            Console.WriteLine("Success!");
         }
 
-        public static int nextInt16(Stream input)
+        public static int NextInt16(Stream input)
         {
             int x = ReadInt16(input);
             input.Seek(-2, SeekOrigin.Current);
             return x;
         }
 
-        static byte[, ,] lblocks = new byte[10000, 2, 2];
-        static bool first = true;
-        public static void readBlock(Stream input, byte[,] image, int oy, int ox, int height, int width)
+        public static int NextByte(Stream input)
         {
-            input.ReadByte();
+            int x = input.ReadByte();
+            input.Seek(-1, SeekOrigin.Current);
+            return x;
+        }
+
+        static byte[ , , ,] blocks = new byte[4, 0x3F * 4, 2, 2];
+        public static void readBlock(Stream input, byte[,] image, int sec, int frame,  int oy, int ox, int height, int width)
+        {
             int numOfBlocks = input.ReadByte();
-            byte[, ,] blocks = new byte[numOfBlocks, 2, 2];
+            if (numOfBlocks == 0x00 && NextByte(input) == 0xFF)
+            {
+                ReadInt16(input);
+                return;
+            }
+            if (numOfBlocks == 0x01) // TODO: Fix this flag
+            {
+                ReadString(input, 6);
+                return;
+            }
             for (int i = 0; i < numOfBlocks; i++)
             {
                 for (int j = 0; j < 2; j++)
                 {
                     for (int k = 0; k < 2; k++)
                     {
-                        blocks[i, j, k] = (byte)input.ReadByte();
+                        blocks[sec, frame % 4 * 0x3F + i, j, k] = (byte)input.ReadByte();
                     }
                 }
             }
-
 
             int y = 0, x = 0;
             int last = 0;
@@ -170,8 +181,7 @@ namespace CompileTools
                         {
                             for (int dx = 0; dx < 2; dx++)
                             {
-                                if (first || (!first && flag >= 0x3F))
-                                    image[oy + dy + y, ox + dx + x] = blocks[flag % 0x3F, dy, dx];
+                                image[oy + dy + y, ox + dx + x] = blocks[sec, flag, dy, dx];
                             }
                         }
                     }
@@ -187,7 +197,6 @@ namespace CompileTools
                 }
                 last = flag;
             }
-            lblocks = blocks;
         }
     }
 }
