@@ -17,7 +17,8 @@ CompileTools is a romhacking program being developed mainly by M-bot, blacksmith
   
 ### Formats
   * GMP
-  * ITV (WIP)
+  * ITV MMV3 1543 (Extract)
+  * ITV MMV3 1286 (Planned)
 
 ### Commands
  * convert [file] [using]
