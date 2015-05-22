@@ -7,7 +7,7 @@ deploy:
   provider: releases
   api_key:
     secure: dcRxeV+DfNJig2Iw7XIl2mMOD9KhhENL/pQudjlUf2+Z0pDQXXd6vbzk0RdW62D8vEdQYkn3btGC+FVToKnMYeVN3THDq1wZT9aa3X70dwK0x+KWf7GcCr/hdhY9J//lfcmz9I+yj9RiMidRc34QbouUFiUp/xI+UyyI2WlLQ2A=
-  file: "/home/travis/build/M-bot/CompileTools/CompileTools.CLI/bin/Release/CompileTools.zip"
+  file: "/home/travis/build/M-bot/CompileTools/CompileTools.zip"
   skip_cleanup: true
   on:
     tags: true
