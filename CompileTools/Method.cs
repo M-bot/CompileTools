@@ -113,6 +113,19 @@ namespace CompileTools
                 input.WriteByte((byte)0);
             }
         }
+        public static int NextInt16(Stream input)
+        {
+            int x = ReadInt16(input);
+            input.Seek(-2, SeekOrigin.Current);
+            return x;
+        }
+
+        public static int NextByte(Stream input)
+        {
+            int x = input.ReadByte();
+            input.Seek(-1, SeekOrigin.Current);
+            return x;
+        }
 
         public static int CopyBytes(Stream input, Stream output, int num)
         {

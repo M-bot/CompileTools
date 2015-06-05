@@ -81,7 +81,8 @@ namespace CompileTools.CLI.Commands
             try
             {
                 FileReference outputFile = compressor.Decompress(input);
-                output = new FileStream(outputFile.FileDirectory + "/" + outputFile.FileName, FileMode.Create);
+                output = new FileStream(
+                Path.Combine(outputFile.FileDirectory, outputFile.FileName), FileMode.Create);
                 outputFile.Stream.Seek(0, SeekOrigin.Begin);
                 for (int x = 0; x < outputFile.Stream.Length; x++)
                     output.WriteByte((byte)outputFile.Stream.ReadByte());
