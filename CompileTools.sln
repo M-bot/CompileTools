@@ -1,11 +1,13 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2013
-VisualStudioVersion = 12.0.30501.0
+VisualStudioVersion = 12.0.31101.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CompileTools", "CompileTools\CompileTools.csproj", "{43212A3B-9330-4710-B568-57EF414BDC8E}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CompileTools.CLI", "CompileTools.CLI\CompileTools.CLI.csproj", "{71363CAC-E3F3-44EE-90F5-DE499935332D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CompileTools.GUI", "CompileTools.GUI\CompileTools.GUI.csproj", "{C43C8FD0-98AC-4D14-92BF-3529B5355DDF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{71363CAC-E3F3-44EE-90F5-DE499935332D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{71363CAC-E3F3-44EE-90F5-DE499935332D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{71363CAC-E3F3-44EE-90F5-DE499935332D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C43C8FD0-98AC-4D14-92BF-3529B5355DDF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C43C8FD0-98AC-4D14-92BF-3529B5355DDF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C43C8FD0-98AC-4D14-92BF-3529B5355DDF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C43C8FD0-98AC-4D14-92BF-3529B5355DDF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
