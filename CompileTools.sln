@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CompileTools", "CompileTool
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CompileTools.CLI", "CompileTools.CLI\CompileTools.CLI.csproj", "{71363CAC-E3F3-44EE-90F5-DE499935332D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CompileTools.GUI", "CompileTools.GUI\CompileTools.GUI.csproj", "{C9D5D856-0FF3-4D8A-8EBC-9F80AC657DE8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{71363CAC-E3F3-44EE-90F5-DE499935332D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{71363CAC-E3F3-44EE-90F5-DE499935332D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{71363CAC-E3F3-44EE-90F5-DE499935332D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C9D5D856-0FF3-4D8A-8EBC-9F80AC657DE8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C9D5D856-0FF3-4D8A-8EBC-9F80AC657DE8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C9D5D856-0FF3-4D8A-8EBC-9F80AC657DE8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C9D5D856-0FF3-4D8A-8EBC-9F80AC657DE8}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
