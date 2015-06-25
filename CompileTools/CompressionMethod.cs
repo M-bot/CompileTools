@@ -20,7 +20,7 @@ namespace CompileTools
         {
             foreach(CompressionMethod cm in methods)
             {
-                if (cm.Outputs.Contains(method))
+                if (cm.Outputs.Contains(method) || cm.Inputs.Contains(method))
                     return cm;
             }
             return null;

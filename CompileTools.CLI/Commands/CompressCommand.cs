@@ -18,12 +18,12 @@ namespace CompileTools.CLI.Commands
 
             string method = args.Length > 1 ? "." + args[1] : ext;
             CompressionMethod compressor = CompressionMethod.FindCompressor(method);
-            string outputFile = Path.GetFileNameWithoutExtension(file) + method;
+            string outputFile = Path.GetFileNameWithoutExtension(file);
 
             if (compressor == null)
-                Console.WriteLine("These are not the formats we are looking for...");
+                Console.WriteLine("These are not the formats we are looking for..");
             else if (compressor.Inputs.Contains(ext))
-                Compress(file, outputFile, compressor);
+                Compress(file, outputFile + compressor.Outputs[0], compressor);
             else if (compressor.Outputs.Contains(ext))
                 Decompress(file, compressor);
             else

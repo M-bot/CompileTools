@@ -9,6 +9,9 @@ namespace CompileTools
 {
     public class GMP200 : ConversionMethod
     {
+        private bool forcedOpaqueness;
+        private int transparencyColor = -1;
+
         public override string Name
         {
             get { return "GMP-200"; }
@@ -28,6 +31,11 @@ namespace CompileTools
         }
         public override void ConvertTo(Stream input, Stream output)
         {
+            Console.WriteLine("Force transparency (true|false): ");
+            Boolean.TryParse(Console.ReadLine(), out forcedOpaqueness);
+            Console.WriteLine("Transparency Color (0-255): ");
+            Int32.TryParse(Console.ReadLine(), out transparencyColor);
+
             string id = ReadString(input, 2);
             int bmpSize = ReadInt32(input);
             WriteInt32(input, 0);
@@ -58,7 +66,16 @@ namespace CompileTools
             // Start of palette data
             for (int x = 0; x < usedColors; x++)
             {
-                WriteInt32(output, ReadInt32(input));
+                byte[] color = new byte[4];
+                for (int j = 0; j < 4; j++)
+                    color[j] = (byte)input.ReadByte();
+                if (forcedOpaqueness)
+                {
+                    if(transparencyColor != x)
+                        color[0] = 0xFF;
+                }
+                for (int j = 0; j < 4; j++)
+                    output.WriteByte(color[j]);
             }
 
             // Start of bitmap data
