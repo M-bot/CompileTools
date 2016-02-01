@@ -93,6 +93,15 @@ namespace CompileTools
             string str = new string(strArr);
             return str.Substring(0,str.Length - count);
         }
+        public static string ReadStringU(Stream input, int length)
+        {
+            char[] strArr = new char[length]; 
+            for (int x = 0; x < strArr.Length; x++)
+            {
+                strArr[x] = (char)input.ReadByte();
+            }
+            return new string(strArr);
+        }
 
         public static void WriteString(Stream input, string str)
         {

@@ -48,6 +48,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="FileIndex.cs" />
+    <Compile Include="GDT.cs" />
     <Compile Include="IT3.cs" />
     <Compile Include="FileReference.cs" />
     <Compile Include="ArchiveMethod.cs" />

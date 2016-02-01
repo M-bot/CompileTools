@@ -13,6 +13,7 @@ namespace CompileTools
 
         public static void Load()
         {
+            methods.Add(new GDT());
             methods.Add(new GMP200());
             methods.Add(new ITV());
         }
