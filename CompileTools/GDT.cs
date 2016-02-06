@@ -32,7 +32,44 @@ namespace CompileTools
         }
         public override void ConvertTo(Stream input, Stream output)
         {
+            Bitmap bmp = new Bitmap(Bitmap.FromStream(input));
+            WriteInt16(output, unchecked((short)0xE488));
+            WriteInt32(output, 0);
+            WriteInt16(output, (short)bmp.Width);
+            WriteInt16(output, (short)(bmp.Height/2));
+            output.WriteByte(0x11);
 
+            for (int w = 0; w < bmp.Width; w+=8)
+            {
+                for (int p = 0; p < 3; p++)
+                {
+                    output.WriteByte(0x04);
+                    for (int h = 0; h < bmp.Height; h+=2)
+                    {
+                        int data = 0;
+                        for (int dw = 0; dw < 8; dw++)
+                        {
+                            if (bmp.GetPixel(w + dw, h).B > 0 && p == 0)
+                            {
+                                data |= 1 << (7 - dw);
+                            }
+                            if (bmp.GetPixel(w + dw, h).R > 0 && p == 1)
+                            {
+                                data |= 1 << (7 - dw);
+                            }
+                            if (bmp.GetPixel(w + dw, h).G > 0 && p == 2)
+                            {
+                                data |= 1 << (7 - dw);
+                            }
+                        }
+                        output.WriteByte((byte)data);
+                        if (data >> 4 == (data & 0xF))
+                        {
+                            output.WriteByte(0x01);
+                        }
+                    }
+                }
+            }
         }
 
         int height = 0;
@@ -69,12 +106,7 @@ namespace CompileTools
                         bool error = false;
 
                         if (data == 0) continue;
-                        if (data == 0x43)
-                        {
-                            while (NextByte(input) != 0x06)
-                                input.ReadByte();
-                            goto print;
-                        }
+
 
                         wtf = false;
                         if ((datab & 0x8) == 0x8)
@@ -83,6 +115,11 @@ namespace CompileTools
                             wtf = true;
                         }
                         datab &= ~0x8;
+
+                        if (datat == 0xC)
+                        {
+                            CopyData(block - 1, block, plane, plane);
+                        }
 
                         if ((datat & 0x1) == 0x1)
                         {
@@ -99,11 +136,11 @@ namespace CompileTools
                             {
                                 int line = input.ReadByte();
                                 data = input.ReadByte();
-                                if ((line & 0x80) == 0x80)
+                                if (line >= height)
                                 {
                                     if (line == 0xFF) break;
                                     WriteData(block, plane, line &= ~0x80, data, 1);
-                                    if (height < 0x80) break;
+                                    break;
                                 }
                                 WriteData(block, plane, line, data, 1);
                             }
@@ -181,11 +218,20 @@ namespace CompileTools
                                         if ((count & 0xF0) == 0xC0)
                                         {
                                             count -= 0xC0;
-                                            data = input.ReadByte();
+                                            if (data == 0xFF) 
+                                                data = input.ReadByte();
+                                            if (data == 0x00)
+                                            {
+                                                // This obviously doesn't work for the rotate thing
+                                                data = (input.ReadByte() << 8) | input.ReadByte();
+                                                count *= 2;
+                                            }
 
-                                            for (int x = 0; x < count; x++, data >>= 1, data |= 0x80)
+                                            for (int x = 0; x < count; x++)
                                             {
                                                 WriteData(block, plane, curLine + x, data, 1);
+                                                datab = (data & 0x1) << 7;      // Rotate left 1
+                                                data = (data >> 1) | datab;
                                             }
                                             curLine += count;
                                             continue;
@@ -232,13 +278,21 @@ namespace CompileTools
                                     datat = (data & 0xF0) >> 4;
                                     datab = data & 0x0F;
 
+                                    if (data == 0)
+                                    {
+                                        datat = input.ReadByte();
+                                        datat = ((datat & 0x80) == 0x80 ? datat - 0x80 : datat) * 2;
+                                        data = (input.ReadByte() << 8) | input.ReadByte();
+                                        WriteData(block, plane, curLine, data, datat);
+                                        goto end6;
+                                    }
+
                                     // Checking for direct write 
                                     if (datat == 0)
                                     {
                                         datat = datab == 0xE ? input.ReadByte() : datab;
                                         WriteData(block, plane, curLine, input, datat);
-                                        curLine += datat;
-                                        continue;
+                                        goto end6;
                                     }
 
                                     // Getting actual length if value is greater than 0xD
@@ -294,7 +348,13 @@ namespace CompileTools
                                             break;
                                         case 0xF:
                                             data = input.ReadByte();
-                                            break;
+                                            for (int x = 0; x < datat; x++)
+                                            {
+                                                WriteData(block, plane, curLine + x, data, 1);
+                                                datab = (data & 0x3) << 6;      // Rotate left 2
+                                                data = (data >> 2) | datab;
+                                            }
+                                            goto end6;
                                         default:
                                             error = true;
                                             Console.WriteLine("NR" + datab);
@@ -302,7 +362,7 @@ namespace CompileTools
                                     }
 
                                     WriteData(block, plane, curLine, data, datat);
-                                    curLine += datat;
+                           end6:    curLine += datat;
                                 }
                                 break;
                             default:
@@ -400,11 +460,6 @@ namespace CompileTools
                 }
                 for (int l = 0; l < count; l++)
                 {
-                    if (line + l >= height)
-                    {
-                        Console.WriteLine("We have a problem Houston.");
-                        return;
-                    }
                     pixels[block, plane, line + l] ^= data;
                 }
             }
@@ -423,11 +478,6 @@ namespace CompileTools
                 }
                 for (int l = 0; l < count; l++)
                 {
-                    if (line + l >= height)
-                    {
-                        Console.WriteLine("We have a problem Houston.");
-                        return;
-                    }
                     pixels[block, plane, line + l] = data;
                 }
             }
