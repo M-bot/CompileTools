@@ -6,6 +6,7 @@ CompileTools is a romhacking program being developed mainly by M-bot, blacksmith
 ### Games
   * Nayuta no Kiseki
   * Wander Wonder
+  * 46 Okunen
 
 ### Compression
   * CNX
@@ -16,6 +17,7 @@ CompileTools is a romhacking program being developed mainly by M-bot, blacksmith
   * MLK (WIP)
   
 ### Formats
+  * GDT (WIP)
   * GMP
   * ITV MMV3 1543 (Extract)
   * ITV MMV3 1286 (Planned)
