@@ -76,18 +76,32 @@ namespace CompileTools
         bool wtf = false;
         public override void ConvertFrom(Stream input, Stream output)
         {
-            ReadInt16(input);                           // Always x88 xE4?
-            ReadInt16(input);                           // ???
-            ReadInt16(input);                           // ???
+            // Discarding 6 bytes that appears to always start with 0x88 0xE4
+            // They probably provide information but this program doesn't know how to deal with them
+            ReadInt16(input);                           
+            ReadInt16(input);                           
+            ReadInt16(input);                           
 
-            int width = ReadInt16(input);               // The width
-            height = ReadInt16(input);              // The height with scanlines subtracted
-            input.ReadByte();                           // Always x11?
+            // Reading the width and height, which is then followed by the end of the "header"
+            // The last byte appears to always be 0x11
+            int width = ReadInt16(input);               
+            height = ReadInt16(input);                  
+            input.ReadByte();                           
 
-            int numberOfBlocks = width / 8;             // Block width is 8px, height is same as image
+            // The format encodes the image in a series of blocks that are 8 pixels wide and image height tall.
+            // Each block is seperated into three color planes that hold various instructions on what to draw.
+            // We initialize the buffer we will be writing to as three dimensional array of integers. 
+            // Each integer represents an 8 pixel draw line at a certain height within a block's color plane.
+            int numberOfBlocks = width / 8;             
             pixels = new int[numberOfBlocks, 3, height];
 
+            
+            // This is the buffer that will be used to save the file once we are done decoding
             Bitmap bmp = new Bitmap(width, height * 2, PixelFormat.Format32bppRgb);
+            
+            // A try finally is used to make sure we always dump the last image created into the file
+            // This is done since we don't know how to entirely decode the image at times and the 
+            // program will fail. Dumping the last image allows us to see the progress it made.
             try
             {
 
@@ -97,14 +111,22 @@ namespace CompileTools
                 {
                     for (int plane = 0; plane < 3; plane++)
                     {
-                        // Read the encoding data and split into half bytes
                         indexOfPrevPlane = input.Position;
+                        
+                        // Reads the encoding flag and splits it into nibbles
                         int data = input.ReadByte();
                         int datat = data >> 4;
                         int datab = data & 0x0F;
+                        
+                        // Since the each plane is not a continous set of a data  we have to keep track
+                        // of the currrent line so we can write data in the correct area as well as keep
+                        // within the bounds of the image
                         int curLine = 0;
+                        
+                        // Use a boolean to notify of known errors that didn't cause the program to crash
                         bool error = false;
 
+                        // The format allows an empty (black) plane to be encoded as 0x00
                         if (data == 0) continue;
 
 
