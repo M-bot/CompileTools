@@ -49,7 +49,6 @@ namespace CompileTools
                     {
                         if (bmp.GetPixel(width + dw, height).ToArgb() != Color.Black.ToArgb())
                         {
-                            Console.WriteLine("the block isn't totally blank");
                             allBlack = false;
                         }
                     }
@@ -57,7 +56,6 @@ namespace CompileTools
                 if (allBlack)
                 {
                     // Write a blank block, then move to the next block
-                    Console.WriteLine("it's all black");
                     output.WriteByte(0x00);
                     output.WriteByte(0x00);
                     output.WriteByte(0x00);
@@ -66,8 +64,7 @@ namespace CompileTools
 
                 for (int plane = 0; plane < 3; plane++)                               // for each plane (B R G):
                 {
-                    // When the plane's encoding method is determined, write its characteristic byte and update this string.
-                    String encodingMethod = null;
+                    List<int> planeData = new List<int>();
                     // (For now, RLE is the only one I'm even thinking about.)
                     // Next step: keep count of how many times the same "data" occurs. 
                     // When data is something different, write data * number of times, then start a new combo.
@@ -91,19 +88,21 @@ namespace CompileTools
                                 data |= 1 << (7 - dw);
                             }
                         }
-                            if (encodingMethod == null)
-                            {
-                                encodingMethod = "RLE";
-                                output.WriteByte(0x04);
-                            }
-                            //Console.WriteLine((int)data);
-                            output.WriteByte((byte)data);
-                            if (data >> 4 == (data & 0xF))            // if higher nibble equals lower nibble
-                            {
-                                // 
-                                //Console.WriteLine("writing an 01 as well");
-                                output.WriteByte(0x01);
-                            }
+
+                        planeData.Add(data);
+
+                        // If higher nibble equals lower nibble, add a 0x01.
+                        // (Because the run length of each one is 0x01??? Why not just increment runlength?)
+                        if (data >> 4 == (data & 0xF))
+                        {
+                            planeData.Add(0x01);
+                        }
+                    }
+                    output.WriteByte(0x04);
+                    foreach (int d in planeData)
+                    {
+                        // Next step: check if planeData is the same thing as the previous plane.
+                        output.WriteByte((byte)d);
                     }
                 }
             }
