@@ -41,45 +41,70 @@ namespace CompileTools
 
             for (int width = 0; width < bmp.Width; width+=8)                          // considers 8 columns at a time
             {
+                // First, check if the block is entirely black. Then we can write "00-00-00" and skip it.
+                bool allBlack = true;
+                for (int height = 0; height < bmp.Height && allBlack; height += 2)
+                {
+                    for (int dw = 0; dw < 8 && allBlack; dw++)
+                    {
+                        if (bmp.GetPixel(width + dw, height).ToArgb() != Color.Black.ToArgb())
+                        {
+                            Console.WriteLine("the block isn't totally blank");
+                            allBlack = false;
+                        }
+                    }
+                }
+                if (allBlack)
+                {
+                    // Write a blank block, then move to the next block
+                    Console.WriteLine("it's all black");
+                    output.WriteByte(0x00);
+                    output.WriteByte(0x00);
+                    output.WriteByte(0x00);
+                    continue;
+                }
+
                 for (int plane = 0; plane < 3; plane++)                               // for each plane (B R G):
                 {
-                    bool allBlack = true;                                                // all-black planes can just be represented with 0x00
+                    // When the plane's encoding method is determined, write its characteristic byte and update this string.
+                    String encodingMethod = null;
+                    // (For now, RLE is the only one I'm even thinking about.)
+                    // Next step: keep count of how many times the same "data" occurs. 
+                    // When data is something different, write data * number of times, then start a new combo.
+
                     for (int height = 0; height < bmp.Height; height+=2)
                     {
+                        // data is written one row at a time
                         int data = 0;
                         for (int dw = 0; dw < 8; dw++)                                // dw = difference in width; column in the block
                         {
                             if (bmp.GetPixel(width + dw, height).B > 0 && plane == 0)
                             {
                                 data |= 1 << (7 - dw);                    // append a binary 1; bitshift it into the correct position (high for left, low for right)
-                                allBlack = false;
                             }
                             if (bmp.GetPixel(width + dw, height).R > 0 && plane == 1)
                             {
                                 data |= 1 << (7 - dw);
-                                allBlack = false;
                             }
                             if (bmp.GetPixel(width + dw, height).G > 0 && plane == 2)
                             {
                                 data |= 1 << (7 - dw);
-                                allBlack = false;
                             }
                         }
-                        if (!allBlack)
-                        {
-                            output.WriteByte(0x04);                   // lower nibble 4: "direct write unless nibbles equal each other"
-                            Console.WriteLine((int)data);
+                            if (encodingMethod == null)
+                            {
+                                encodingMethod = "RLE";
+                                output.WriteByte(0x04);
+                            }
+                            //Console.WriteLine((int)data);
                             output.WriteByte((byte)data);
                             if (data >> 4 == (data & 0xF))            // if higher nibble equals lower nibble
                             {
-                                Console.WriteLine("writing an 01 as well");
+                                // 
+                                //Console.WriteLine("writing an 01 as well");
                                 output.WriteByte(0x01);
                             }
-                        }
                     }
-                    if (allBlack)
-                        Console.WriteLine("allBlack");
-                        output.WriteByte(0x00);
                 }
             }
         }
