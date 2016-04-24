@@ -32,12 +32,15 @@ namespace CompileTools
         }
         public override void ConvertTo(Stream input, Stream output)
         {
+            // Current compression quality: Compresses GAMEOVER.GDT to 0x3bc6 bytes.
             Bitmap bmp = new Bitmap(Bitmap.FromStream(input));
             WriteInt16(output, unchecked((short)0xE488));
             WriteInt32(output, 0);
             WriteInt16(output, (short)bmp.Width);
             WriteInt16(output, (short)(bmp.Height/2));
             output.WriteByte(0x11);
+
+            List<int> prevPlaneData = new List<int>();
 
             for (int width = 0; width < bmp.Width; width+=8)                          // considers 8 columns at a time
             {
@@ -59,8 +62,10 @@ namespace CompileTools
                     output.WriteByte(0x00);
                     output.WriteByte(0x00);
                     output.WriteByte(0x00);
+                    prevPlaneData.Clear();
                     continue;
                 }
+                
 
                 for (int plane = 0; plane < 3; plane++)                               // for each plane (B R G):
                 {
@@ -68,6 +73,8 @@ namespace CompileTools
                     // (For now, RLE is the only one I'm even thinking about.)
                     // Next step: keep count of how many times the same "data" occurs. 
                     // When data is something different, write data * number of times, then start a new combo.
+                    //int runLength = 1;
+                    //int runLengthData = 0;
 
                     for (int height = 0; height < bmp.Height; height+=2)
                     {
@@ -89,21 +96,63 @@ namespace CompileTools
                             }
                         }
 
-                        planeData.Add(data);
+                        if (data > 0)
+                        {
+                            planeData.Add((byte)(height/2));
+                            Console.WriteLine(height / 2);
+                            planeData.Add((byte)data);
+                        }
+
+                        //if (data == runLengthData)
+                        //{
+                         //   runLength++;
+                        //}
+                        //else
+                        //{
+
+                        //    planeData.Add((byte)runLengthData);
+                        //    planeData.Add((byte)runLength);
+
+                         //   runLengthData = data;
+                        //    runLength = 1;
+                        //}
+
+                        //planeData.Add(data);
 
                         // If higher nibble equals lower nibble, add a 0x01.
                         // (Because the run length of each one is 0x01??? Why not just increment runlength?)
-                        if (data >> 4 == (data & 0xF))
-                        {
-                            planeData.Add(0x01);
-                        }
+                        //if (data >> 4 == (data & 0xF))
+                        //{
+                        //    planeData.Add(0x01);
+                        //}
                     }
-                    output.WriteByte(0x04);
-                    foreach (int d in planeData)
+                    //if (runLength > 1)
+                    //{
+                    //    planeData.Add((byte)runLengthData);
+                    //    planeData.Add((byte)runLength);
+                   // }
+
+                    //output.WriteByte(0x04);
+
+                    if (planeData == prevPlaneData)
                     {
-                        // Next step: check if planeData is the same thing as the previous plane.
-                        output.WriteByte((byte)d);
+                        Console.WriteLine("they're the same!");
+                        output.WriteByte(0x10);
                     }
+                    else
+                    {
+                        // 0x81 = begin POS
+                        output.WriteByte(0x81);
+                        foreach (int d in planeData)
+                        {
+                            // Next step: check if planeData is the same thing as the previous plane.
+                            output.WriteByte((byte)d);
+                        }
+                        // 0xFF 0xFF = end POS
+                        output.WriteByte(0xFF);
+                        output.WriteByte(0xFF);
+                    }
+                    prevPlaneData = planeData;
                 }
             }
         }
