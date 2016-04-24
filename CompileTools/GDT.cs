@@ -39,35 +39,47 @@ namespace CompileTools
             WriteInt16(output, (short)(bmp.Height/2));
             output.WriteByte(0x11);
 
-            for (int w = 0; w < bmp.Width; w+=8)
+            for (int width = 0; width < bmp.Width; width+=8)                          // considers 8 columns at a time
             {
-                for (int p = 0; p < 3; p++)
+                for (int plane = 0; plane < 3; plane++)                               // for each plane (B R G):
                 {
-                    output.WriteByte(0x04);
-                    for (int h = 0; h < bmp.Height; h+=2)
+                    bool allBlack = true;                                                // all-black planes can just be represented with 0x00
+                    for (int height = 0; height < bmp.Height; height+=2)
                     {
                         int data = 0;
-                        for (int dw = 0; dw < 8; dw++)
+                        for (int dw = 0; dw < 8; dw++)                                // dw = difference in width; column in the block
                         {
-                            if (bmp.GetPixel(w + dw, h).B > 0 && p == 0)
+                            if (bmp.GetPixel(width + dw, height).B > 0 && plane == 0)
                             {
-                                data |= 1 << (7 - dw);
+                                data |= 1 << (7 - dw);                    // append a binary 1; bitshift it into the correct position (high for left, low for right)
+                                allBlack = false;
                             }
-                            if (bmp.GetPixel(w + dw, h).R > 0 && p == 1)
+                            if (bmp.GetPixel(width + dw, height).R > 0 && plane == 1)
                             {
                                 data |= 1 << (7 - dw);
+                                allBlack = false;
                             }
-                            if (bmp.GetPixel(w + dw, h).G > 0 && p == 2)
+                            if (bmp.GetPixel(width + dw, height).G > 0 && plane == 2)
                             {
                                 data |= 1 << (7 - dw);
+                                allBlack = false;
                             }
                         }
-                        output.WriteByte((byte)data);
-                        if (data >> 4 == (data & 0xF))
+                        if (!allBlack)
                         {
-                            output.WriteByte(0x01);
+                            output.WriteByte(0x04);                   // lower nibble 4: "direct write unless nibbles equal each other"
+                            Console.WriteLine((int)data);
+                            output.WriteByte((byte)data);
+                            if (data >> 4 == (data & 0xF))            // if higher nibble equals lower nibble
+                            {
+                                Console.WriteLine("writing an 01 as well");
+                                output.WriteByte(0x01);
+                            }
                         }
                     }
+                    if (allBlack)
+                        Console.WriteLine("allBlack");
+                        output.WriteByte(0x00);
                 }
             }
         }
