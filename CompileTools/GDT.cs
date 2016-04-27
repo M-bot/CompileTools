@@ -96,45 +96,43 @@ namespace CompileTools
                             }
                         }
 
-                        if (data > 0)
-                        {
-                            planeData.Add((byte)(height/2));
-                            Console.WriteLine(height / 2);
-                            planeData.Add((byte)data);
-                        }
+                        //if (data > 0)
+                        //{
+                        //    planeData.Add((byte)(height/2));
+                        //    Console.WriteLine(height / 2);
+                        //    planeData.Add((byte)data);
+                        //}
 
                         //if (data == runLengthData)
                         //{
-                         //   runLength++;
+                        //    runLength++;
                         //}
                         //else
                         //{
-
+                        //
                         //    planeData.Add((byte)runLengthData);
                         //    planeData.Add((byte)runLength);
-
-                         //   runLengthData = data;
+                        //
+                        //    runLengthData = data;
                         //    runLength = 1;
                         //}
 
-                        //planeData.Add(data);
+                        planeData.Add(data);
 
                         // If higher nibble equals lower nibble, add a 0x01.
                         // (Because the run length of each one is 0x01??? Why not just increment runlength?)
-                        //if (data >> 4 == (data & 0xF))
-                        //{
-                        //    planeData.Add(0x01);
-                        //}
+                        if (data >> 4 == (data & 0xF))
+                        {
+                            planeData.Add(0x01);
+                        }
                     }
                     //if (runLength > 1)
                     //{
                     //    planeData.Add((byte)runLengthData);
                     //    planeData.Add((byte)runLength);
-                   // }
+                    // }
 
-                    //output.WriteByte(0x04);
-
-                    if (planeData == prevPlaneData)
+                    if (planeData.SequenceEqual(prevPlaneData))
                     {
                         Console.WriteLine("they're the same!");
                         output.WriteByte(0x10);
@@ -142,15 +140,17 @@ namespace CompileTools
                     else
                     {
                         // 0x81 = begin POS
-                        output.WriteByte(0x81);
+                        //output.WriteByte(0x81);
+
+                        //0x04 = begin RLE
+                        output.WriteByte(0x04);
                         foreach (int d in planeData)
                         {
-                            // Next step: check if planeData is the same thing as the previous plane.
                             output.WriteByte((byte)d);
                         }
                         // 0xFF 0xFF = end POS
-                        output.WriteByte(0xFF);
-                        output.WriteByte(0xFF);
+                        //output.WriteByte(0xFF);
+                        //output.WriteByte(0xFF);
                     }
                     prevPlaneData = planeData;
                 }
