@@ -65,7 +65,10 @@ namespace CompileTools
                     prevPlaneData.Clear();
                     continue;
                 }
-                
+
+                List<List<int>> planes = new List<List<int>>();
+                // TODO: Store planes. Use comparative or to see whether positional encoding might be more efficient.
+
 
                 for (int plane = 0; plane < 3; plane++)                               // for each plane (B R G):
                 {
