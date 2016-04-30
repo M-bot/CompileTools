@@ -69,12 +69,13 @@ namespace CompileTools
 
                 for (int plane = 0; plane < 3; plane++)                               // for each plane (B R G):
                 {
+                    Console.WriteLine("Beginning new plane");
                     List<int> planeData = new List<int>();
-                    // (For now, RLE is the only one I'm even thinking about.)
-                    // Next step: keep count of how many times the same "data" occurs. 
-                    // When data is something different, write data * number of times, then start a new combo.
-                    //int runLength = 1;
-                    //int runLengthData = 0;
+                    int runLength = 1;
+                    int runLengthData = 0; // TODO: since this is 0, there's always one too many 0 lines at the beginning!
+                    int curLine = 0;
+
+                    // TODO: Is there a control code for two repetitions? Or any other that collide with a plane start?
 
                     for (int height = 0; height < bmp.Height; height+=2)
                     {
@@ -96,6 +97,8 @@ namespace CompileTools
                             }
                         }
 
+                        Console.WriteLine("data is " + data);
+
                         //if (data > 0)
                         //{
                         //    planeData.Add((byte)(height/2));
@@ -103,34 +106,56 @@ namespace CompileTools
                         //    planeData.Add((byte)data);
                         //}
 
-                        //if (data == runLengthData)
-                        //{
-                        //    runLength++;
-                        //}
-                        //else
-                        //{
-                        //
-                        //    planeData.Add((byte)runLengthData);
-                        //    planeData.Add((byte)runLength);
-                        //
-                        //    runLengthData = data;
-                        //    runLength = 1;
-                        //}
+                        if (data == runLengthData)
+                        {
+                            runLength++;
+                            Console.WriteLine("data is the same, so runLength is now " + runLength);
+                        }
+                        else
+                        {
+                            Console.WriteLine("data is different so write old data and reset");
+                            Console.WriteLine("writing: " + runLengthData);
+                            Console.WriteLine("writing: " + runLength);
+                            //planeData.Add((byte)runLengthData);
+                            if (runLength > 1)
+                            {
+                                if (runLength == 4)
+                                {
+                                    // Special prefix control code for 4 repetitions, since don't want collision with 0x04.
+                                    planeData.Add(0xFF);
+                                    planeData.Add(0x84);
+                                    planeData.Add((byte)runLengthData);
+                                } else {
+                                    planeData.Add((byte)runLengthData);
+                                    planeData.Add((byte)runLength);
+                                }
+                                
+                            } else {
+                                // just 1 repetition doesn't need its run length represented.
+                                planeData.Add((byte)runLengthData);
+                            }
+                            
+                            curLine += runLength;
+                        
+                            runLengthData = data;
+                            runLength = 1;
+                        }
 
-                        planeData.Add(data);
+                        //planeData.Add(data);
 
                         // If higher nibble equals lower nibble, add a 0x01.
                         // (Because the run length of each one is 0x01??? Why not just increment runlength?)
-                        if (data >> 4 == (data & 0xF))
-                        {
-                            planeData.Add(0x01);
-                        }
+                        //if (data >> 4 == (data & 0xF))
+                        //{
+                        //    planeData.Add(0x01);
+                        //}
                     }
-                    //if (runLength > 1)
-                    //{
-                    //    planeData.Add((byte)runLengthData);
-                    //    planeData.Add((byte)runLength);
-                    // }
+                    if (runLength > 0)
+                    {
+                        planeData.Add((byte)runLengthData);
+                        planeData.Add((byte)runLength);
+                        curLine += runLength;
+                    }
 
                     if (planeData.SequenceEqual(prevPlaneData))
                     {
@@ -153,6 +178,9 @@ namespace CompileTools
                         //output.WriteByte(0xFF);
                     }
                     prevPlaneData = planeData;
+
+                    Console.WriteLine("curLine at the end was " + curLine);
+                    Console.WriteLine("it should have been " + (bmp.Height/2));
                 }
             }
         }
