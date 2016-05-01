@@ -72,8 +72,6 @@ namespace CompileTools
                     planes.Add(blankPlane);
                     currentPlane += 3;
 
-                    // TODO: Add these to "planes" list?
-
                     continue;
                 }
 
@@ -87,7 +85,6 @@ namespace CompileTools
                    
                     for (int height = 0; height < bmp.Height; height+=2)
                     {
-                        // data is written one row at a time
                         int data = 0;
                         for (int dw = 0; dw < 8; dw++)                                // dw = difference in width; column in the block
                         {
@@ -115,23 +112,9 @@ namespace CompileTools
                         //}
                     }
 
-                    //if (runLength > 0)
-                    //{
-                    //    planeData.Add((byte)runLengthData);
-                    //    planeData.Add((byte)runLength);
-                    //    curLine += runLength;
-                    //}
-
                     // Here, do calculations to figure out whether it'd be better to use a plane copying code.
 
                     planes.Add(planeData);
-                    //Console.WriteLine("there are currently this many planes: " + planes.Count);
-                    //Console.WriteLine(String.Join(", ", planes));
-                    //foreach (List<int> p in planes)
-                    //{
-                    //    Console.WriteLine(String.Join(", ", p));
-                    //    Console.WriteLine("length of the plane: " + p.Count);
-                    //}
 
                     List<int?> planeRLE = new List<int?>();
                     int? runLengthData = null;
@@ -160,21 +143,26 @@ namespace CompileTools
                                 }
                                 else
                                 {
-                                    planeRLE.Add(runLengthData);
-                                    // Run length of 1 doesn't get recorded.
-                                    if (runLength > 1)
+                                    // 0x04 only does run-length encoding on data with equal nibbles!! (often 0x00 or 0xFF)
+                                    if (runLengthData >> 4 == (runLengthData & 0xF))
                                     {
+                                        planeRLE.Add(runLengthData);
                                         planeRLE.Add(runLength);
                                     }
+                                    else
+                                    {
+                                        for (int i=0; i<runLength; i++)
+                                        {
+                                            planeRLE.Add(runLengthData);
+                                        }
+                                    }
                                 }
-
                                 runLengthData = data;
                                 runLength = 1;
                             }
                         }
-                        Console.WriteLine(String.Join(", ", planeRLE));
+                        //Console.WriteLine(String.Join(", ", planeRLE));
                     }
-
                     // Add the last run as well, which is not caught in the above loop.
                     if (runLength > 0)
                     {
@@ -182,33 +170,49 @@ namespace CompileTools
                         planeRLE.Add(runLength);
                     }
 
-                    if (currentPlane > 0)
+                    // See if 0x10 (repeat previous plane) is a good option.
+                    int diffWithPreviousPlane = 0;
+                    List<int> xorWithPreviousPlane = new List<int>();
+                    for (int i = 0; i < planeData.Count; i++)
                     {
-                        if (planeData.SequenceEqual(planes[currentPlane - 1]))
+                        if (planeData[i] != planes[currentPlane-1][i])
                         {
-                            Console.WriteLine("they're the same!");
-                            output.WriteByte(0x10);
+                            xorWithPreviousPlane.Add(planeData[i] ^ planes[currentPlane - 1][i]);
+                            diffWithPreviousPlane++;
                         }
                         else
                         {
-                            Console.WriteLine("writing RLE");
-                            //0x04 = begin RLE
-                            output.WriteByte(0x04);
-                            foreach (int d in planeRLE)
-                            {
-                                output.WriteByte((byte)d);
-                            }
+                            xorWithPreviousPlane.Add(0);
                         }
                     }
-                    else
+                    Console.WriteLine("diff with previous plane: " + diffWithPreviousPlane);
+
+                    if (currentPlane == 0)
                     {
-                        Console.WriteLine("writing RLE");
-                        //0x04 = begin RLE
+                        //Console.WriteLine("writing RLE");
                         output.WriteByte(0x04);
                         foreach (int d in planeRLE)
                         {
                             output.WriteByte((byte)d);
                         }
+
+                    }
+                    else
+                    {
+                        //if (planeData.SequenceEqual(planes[currentPlane - 1]))
+                        //{
+                        //    Console.WriteLine("they're the same!");
+                        //    output.WriteByte(0x10);
+                       // }
+                        //else
+                        //{
+                        Console.WriteLine("writing RLE");
+                        output.WriteByte(0x04);
+                        foreach (int d in planeRLE)
+                        {
+                            output.WriteByte((byte)d);
+                        }
+                        //}
                     }
                 }
             }
@@ -367,12 +371,13 @@ namespace CompileTools
                                 WriteData(block, plane, 0, data, height);
                                 break;
                             case 4:
+                                // description of the 0x04 plane encoding
                                 Console.ForegroundColor = ConsoleColor.Cyan;
                                 while (curLine < height)
                                 {
-                                    data = input.ReadByte();
-                                    datat = (data & 0xF0) >> 4;
-                                    datab = data & 0x0F;
+                                    data = input.ReadByte();       // first byte: direct binary representation of a line
+                                    datat = (data & 0xF0) >> 4;    // upper nibble
+                                    datab = data & 0x0F;           // lower nibble
                                     int count = 1;
 
                                     // Checking if nibbles equal each other
