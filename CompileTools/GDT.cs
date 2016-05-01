@@ -67,19 +67,15 @@ namespace CompileTools
                 }
 
                 List<List<int>> planes = new List<List<int>>();
+                int currentPlane = 0;
                 // TODO: Store planes. Use comparative or to see whether positional encoding might be more efficient.
-
 
                 for (int plane = 0; plane < 3; plane++)                               // for each plane (B R G):
                 {
-                    Console.WriteLine("Beginning new plane");
+                    // planeData is the raw line-by-line representation.
                     List<int> planeData = new List<int>();
-                    int runLength = 1;
-                    int runLengthData = 0; // TODO: since this is 0, there's always one too many 0 lines at the beginning!
-                    int curLine = 0;
-
-                    // TODO: Is there a control code for two repetitions? Or any other that collide with a plane start?
-
+                    currentPlane++;
+                   
                     for (int height = 0; height < bmp.Height; height+=2)
                     {
                         // data is written one row at a time
@@ -100,51 +96,7 @@ namespace CompileTools
                             }
                         }
 
-                        Console.WriteLine("data is " + data);
-
-                        //if (data > 0)
-                        //{
-                        //    planeData.Add((byte)(height/2));
-                        //    Console.WriteLine(height / 2);
-                        //    planeData.Add((byte)data);
-                        //}
-
-                        if (data == runLengthData)
-                        {
-                            runLength++;
-                            Console.WriteLine("data is the same, so runLength is now " + runLength);
-                        }
-                        else
-                        {
-                            Console.WriteLine("data is different so write old data and reset");
-                            Console.WriteLine("writing: " + runLengthData);
-                            Console.WriteLine("writing: " + runLength);
-                            //planeData.Add((byte)runLengthData);
-                            if (runLength > 1)
-                            {
-                                if (runLength == 4)
-                                {
-                                    // Special prefix control code for 4 repetitions, since don't want collision with 0x04.
-                                    planeData.Add(0xFF);
-                                    planeData.Add(0x84);
-                                    planeData.Add((byte)runLengthData);
-                                } else {
-                                    planeData.Add((byte)runLengthData);
-                                    planeData.Add((byte)runLength);
-                                }
-                                
-                            } else {
-                                // just 1 repetition doesn't need its run length represented.
-                                planeData.Add((byte)runLengthData);
-                            }
-                            
-                            curLine += runLength;
-                        
-                            runLengthData = data;
-                            runLength = 1;
-                        }
-
-                        //planeData.Add(data);
+                        planeData.Add(data);
 
                         // If higher nibble equals lower nibble, add a 0x01.
                         // (Because the run length of each one is 0x01??? Why not just increment runlength?)
@@ -153,37 +105,78 @@ namespace CompileTools
                         //    planeData.Add(0x01);
                         //}
                     }
-                    if (runLength > 0)
+
+                    //if (runLength > 0)
+                    //{
+                    //    planeData.Add((byte)runLengthData);
+                    //    planeData.Add((byte)runLength);
+                    //    curLine += runLength;
+                    //}
+
+                    // Here, do calculations to figure out whether it'd be better to use a plane copying code.
+
+                    List<int?> planeRLE = new List<int?>();
+                    int? runLengthData = null;
+                    int runLength = 0;
+                    foreach (var data in planeData)
                     {
-                        planeData.Add((byte)runLengthData);
-                        planeData.Add((byte)runLength);
-                        curLine += runLength;
+                        if (runLengthData == null)
+                        {
+                            runLengthData = data;
+                        }
+                        if (data == runLengthData)
+                        {
+                            runLength++;
+                        }
+                        else
+                        {
+                            if (runLength == 4)
+                            {
+                                planeRLE.Add(0xff);
+                                planeRLE.Add(0x84);
+                                planeRLE.Add(runLengthData);
+                            }
+                            else
+                            {
+                                planeRLE.Add(runLengthData);
+                                if (runLength > 1)
+                                {
+                                    planeRLE.Add(runLength);
+                                }
+                            }
+
+                            runLengthData = null;
+                            runLength = 0;
+                        }
                     }
 
-                    if (planeData.SequenceEqual(prevPlaneData))
+                    if (currentPlane > 20)
                     {
-                        Console.WriteLine("they're the same!");
-                        output.WriteByte(0x10);
+                        if (planeData.SequenceEqual(planes[currentPlane]))
+                        {
+                            Console.WriteLine("they're the same!");
+                            output.WriteByte(0x10);
+                        }
+                        else
+                        {
+                            //0x04 = begin RLE
+                            output.WriteByte(0x04);
+                            foreach (int d in planeRLE)
+                            {
+                                output.WriteByte((byte)d);
+                            }
+                        }
                     }
                     else
                     {
-                        // 0x81 = begin POS
-                        //output.WriteByte(0x81);
-
                         //0x04 = begin RLE
                         output.WriteByte(0x04);
-                        foreach (int d in planeData)
+                        foreach (int d in planeRLE)
                         {
                             output.WriteByte((byte)d);
                         }
-                        // 0xFF 0xFF = end POS
-                        //output.WriteByte(0xFF);
-                        //output.WriteByte(0xFF);
                     }
-                    prevPlaneData = planeData;
-
-                    Console.WriteLine("curLine at the end was " + curLine);
-                    Console.WriteLine("it should have been " + (bmp.Height/2));
+                    planes.Add(planeData);
                 }
             }
         }
@@ -249,6 +242,7 @@ namespace CompileTools
                         wtf = false;
                         if ((datab & 0x8) == 0x8)
                         {
+                            // copy the blue plane of this block
                             CopyData(block, block, 0, plane);
                             wtf = true;
                         }
@@ -261,6 +255,7 @@ namespace CompileTools
 
                         if ((datat & 0x1) == 0x1)
                         {
+                            // copy the previous plane; if it's the blue plane, that means copy the red plane of the previous block
                             CopyData(block + (plane == 0 ? -1 : 0), block, (plane + 2) % 3, plane);
                             wtf = true;
                         }
@@ -585,6 +580,7 @@ namespace CompileTools
         {
             if (wtf)
             {
+                // hmm. when does this apply? data should be 0xFF at its highest, right?
                 if ((data & 0xFF00) > 0)
                 {
                     for (int l = 0; l < count / 2; l++)
@@ -598,6 +594,8 @@ namespace CompileTools
                 }
                 for (int l = 0; l < count; l++)
                 {
+                    // use the bitwise logical XOR between the data and... what's already there??
+                    // oh yeah, the plane that got copied with CopyData.
                     pixels[block, plane, line + l] ^= data;
                 }
             }
