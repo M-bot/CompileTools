@@ -40,7 +40,11 @@ namespace CompileTools
             WriteInt16(output, (short)(bmp.Height/2));
             output.WriteByte(0x11);
 
-            List<int> prevPlaneData = new List<int>();
+            List<List<int>> planes = new List<List<int>>();
+            int currentPlane = -1;
+
+            // blankPlane gets called a few times
+            List<int> blankPlane = new List<int>(Enumerable.Repeat(0x00, bmp.Height / 2));
 
             for (int width = 0; width < bmp.Width; width+=8)                          // considers 8 columns at a time
             {
@@ -62,19 +66,24 @@ namespace CompileTools
                     output.WriteByte(0x00);
                     output.WriteByte(0x00);
                     output.WriteByte(0x00);
-                    prevPlaneData.Clear();
+
+                    planes.Add(blankPlane);
+                    planes.Add(blankPlane);
+                    planes.Add(blankPlane);
+                    currentPlane += 3;
+
+                    // TODO: Add these to "planes" list?
+
                     continue;
                 }
-
-                List<List<int>> planes = new List<List<int>>();
-                int currentPlane = 0;
-                // TODO: Store planes. Use comparative or to see whether positional encoding might be more efficient.
 
                 for (int plane = 0; plane < 3; plane++)                               // for each plane (B R G):
                 {
                     // planeData is the raw line-by-line representation.
                     List<int> planeData = new List<int>();
                     currentPlane++;
+                    Console.WriteLine("Processing plane: " + currentPlane);
+
                    
                     for (int height = 0; height < bmp.Height; height+=2)
                     {
@@ -115,6 +124,15 @@ namespace CompileTools
 
                     // Here, do calculations to figure out whether it'd be better to use a plane copying code.
 
+                    planes.Add(planeData);
+                    //Console.WriteLine("there are currently this many planes: " + planes.Count);
+                    //Console.WriteLine(String.Join(", ", planes));
+                    //foreach (List<int> p in planes)
+                    //{
+                    //    Console.WriteLine(String.Join(", ", p));
+                    //    Console.WriteLine("length of the plane: " + p.Count);
+                    //}
+
                     List<int?> planeRLE = new List<int?>();
                     int? runLengthData = null;
                     int runLength = 0;
@@ -123,42 +141,57 @@ namespace CompileTools
                         if (runLengthData == null)
                         {
                             runLengthData = data;
-                        }
-                        if (data == runLengthData)
-                        {
-                            runLength++;
+                            runLength = 1;
                         }
                         else
                         {
-                            if (runLength == 4)
+                            if (data == runLengthData)
                             {
-                                planeRLE.Add(0xff);
-                                planeRLE.Add(0x84);
-                                planeRLE.Add(runLengthData);
+                                runLength++;
                             }
                             else
                             {
-                                planeRLE.Add(runLengthData);
-                                if (runLength > 1)
+                                // run length of 4 has its own prefix control code, due to collision with 0x04 plane definer.
+                                if (runLength == 4)
                                 {
-                                    planeRLE.Add(runLength);
+                                    planeRLE.Add(0xff);
+                                    planeRLE.Add(0x84);
+                                    planeRLE.Add(runLengthData);
                                 }
-                            }
+                                else
+                                {
+                                    planeRLE.Add(runLengthData);
+                                    // Run length of 1 doesn't get recorded.
+                                    if (runLength > 1)
+                                    {
+                                        planeRLE.Add(runLength);
+                                    }
+                                }
 
-                            runLengthData = null;
-                            runLength = 0;
+                                runLengthData = data;
+                                runLength = 1;
+                            }
                         }
+                        Console.WriteLine(String.Join(", ", planeRLE));
                     }
 
-                    if (currentPlane > 20)
+                    // Add the last run as well, which is not caught in the above loop.
+                    if (runLength > 0)
                     {
-                        if (planeData.SequenceEqual(planes[currentPlane]))
+                        planeRLE.Add(runLengthData);
+                        planeRLE.Add(runLength);
+                    }
+
+                    if (currentPlane > 0)
+                    {
+                        if (planeData.SequenceEqual(planes[currentPlane - 1]))
                         {
                             Console.WriteLine("they're the same!");
                             output.WriteByte(0x10);
                         }
                         else
                         {
+                            Console.WriteLine("writing RLE");
                             //0x04 = begin RLE
                             output.WriteByte(0x04);
                             foreach (int d in planeRLE)
@@ -169,6 +202,7 @@ namespace CompileTools
                     }
                     else
                     {
+                        Console.WriteLine("writing RLE");
                         //0x04 = begin RLE
                         output.WriteByte(0x04);
                         foreach (int d in planeRLE)
@@ -176,7 +210,6 @@ namespace CompileTools
                             output.WriteByte((byte)d);
                         }
                     }
-                    planes.Add(planeData);
                 }
             }
         }
