@@ -164,11 +164,8 @@ namespace CompileTools
                         //Console.WriteLine(String.Join(", ", planeRLE));
                     }
                     // Add the last run as well, which is not caught in the above loop.
-                    if (runLength > 0)
-                    {
-                        planeRLE.Add(runLengthData);
-                        planeRLE.Add(runLength);
-                    }
+                    planeRLE.Add(runLengthData);
+                    planeRLE.Add(runLength);
 
                     // See if 0x10 (repeat previous plane) is a good option.
                     int diffWithPreviousPlane = 0;
@@ -199,20 +196,21 @@ namespace CompileTools
                     }
                     else
                     {
-                        //if (planeData.SequenceEqual(planes[currentPlane - 1]))
-                        //{
-                        //    Console.WriteLine("they're the same!");
-                        //    output.WriteByte(0x10);
-                       // }
-                        //else
-                        //{
-                        Console.WriteLine("writing RLE");
-                        output.WriteByte(0x04);
-                        foreach (int d in planeRLE)
+                        if (diffWithPreviousPlane == 0)
                         {
-                            output.WriteByte((byte)d);
+                            // seems to be no restriction on how many 0x10s in a row.
+                            // But it gives me that lovely cyan instead of the white it should be... why?
+                            output.WriteByte(0x10);
+                            Console.WriteLine("repeat plane - 0x10");
                         }
-                        //}
+                        else { 
+                            Console.WriteLine("writing RLE");
+                            output.WriteByte(0x04);
+                            foreach (int d in planeRLE)
+                            {
+                                output.WriteByte((byte)d);
+                        }
+                        }
                     }
                 }
             }
