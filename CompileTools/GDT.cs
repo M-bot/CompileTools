@@ -196,20 +196,26 @@ namespace CompileTools
                     }
                     else
                     {
-                        if (diffWithPreviousPlane == 0)
+                        //if (diffWithPreviousPlane == 0)
+                        //{
+                        //   // seems to be no restriction on how many 0x10s in a row.
+                        //    // But it gives me that lovely cyan instead of the white it should be... why?
+                        //    output.WriteByte(0x10);
+                        //    Console.WriteLine("repeat plane - 0x10");
+                        //}
+                        //else { 
+                        //    Console.WriteLine("writing RLE");
+                        //    output.WriteByte(0x04);
+                        //    foreach (int d in planeRLE)
+                        //   {
+                        //        output.WriteByte((byte)d);
+                        //}
+                        //}
+                        Console.WriteLine("writing RLE");
+                        output.WriteByte(0x04);
+                        foreach (int d in planeRLE)
                         {
-                            // seems to be no restriction on how many 0x10s in a row.
-                            // But it gives me that lovely cyan instead of the white it should be... why?
-                            output.WriteByte(0x10);
-                            Console.WriteLine("repeat plane - 0x10");
-                        }
-                        else { 
-                            Console.WriteLine("writing RLE");
-                            output.WriteByte(0x04);
-                            foreach (int d in planeRLE)
-                            {
-                                output.WriteByte((byte)d);
-                        }
+                            output.WriteByte((byte)d);
                         }
                     }
                 }
