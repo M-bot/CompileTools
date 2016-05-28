@@ -88,6 +88,7 @@ namespace CompileTools
                         int data = 0;
                         for (int dw = 0; dw < 8; dw++)                                // dw = difference in width; column in the block
                         {
+                            // TODO: Looks like the planes are not just BRG, but comething like cyan-orange-lime...
                             if (bmp.GetPixel(width + dw, height).B > 0 && plane == 0)
                             {
                                 data |= 1 << (7 - dw);                    // append a binary 1; bitshift it into the correct position (high for left, low for right)
@@ -103,13 +104,6 @@ namespace CompileTools
                         }
 
                         planeData.Add(data);
-
-                        // If higher nibble equals lower nibble, add a 0x01.
-                        // (Because the run length of each one is 0x01??? Why not just increment runlength?)
-                        //if (data >> 4 == (data & 0xF))
-                        //{
-                        //    planeData.Add(0x01);
-                        //}
                     }
 
                     // Here, do calculations to figure out whether it'd be better to use a plane copying code.
@@ -161,7 +155,6 @@ namespace CompileTools
                                 runLength = 1;
                             }
                         }
-                        //Console.WriteLine(String.Join(", ", planeRLE));
                     }
                     // Add the last run as well, which is not caught in the above loop.
                     planeRLE.Add(runLengthData);
@@ -296,7 +289,8 @@ namespace CompileTools
 
                         if ((datat & 0x1) == 0x1)
                         {
-                            // copy the previous plane; if it's the blue plane, that means copy the red plane of the previous block
+                            // if the flag begins with 0x1, copy the previous plane
+                            // if current plane is the blue plane, that means copy the (green?) plane of the previous block
                             CopyData(block + (plane == 0 ? -1 : 0), block, (plane + 2) % 3, plane);
                             wtf = true;
                         }
@@ -569,6 +563,7 @@ namespace CompileTools
                                         if (data % 2 == 1)
                                         {
                                             Color oldc = bmp.GetPixel(b * 8 + d, l * 2);
+                                            // take the binary or of what's already there and the current plane color
                                             Color newc = Color.FromArgb(oldc.ToArgb() | GetColor(p));
                                             bmp.SetPixel(b * 8 + d, l * 2, newc);
                                         }
@@ -609,18 +604,29 @@ namespace CompileTools
             unchecked
             {
                 if (plane == 0)
+                    // Values are used in FromArgb / ToArgb.
+                    // cyan-ish
                     return (int)0xFF0066FF;
                 if (plane == 1)
+                    // orange-red-ish
                     return (int)0xFFFF6600;
                 if (plane == 2)
+                    // lime-green
                     return (int)0xFF00FF00;
                 return (int)0xFFFFFFFF;
+
+                // cyan + orange = light pink (0xffccff)
+                // cyan + lime =   light cyan (0x00ffff)
+                // orange + lime =     yellow (0xffff00)
+                // all =                white (0xffffff)
+                // none =               black (0x000000)
             }
         }
 
         public void WriteData(int block, int plane, int line, int data, int count)
         {
             if (wtf)
+                // wtf indeed!
             {
                 // hmm. when does this apply? data should be 0xFF at its highest, right?
                 if ((data & 0xFF00) > 0)
