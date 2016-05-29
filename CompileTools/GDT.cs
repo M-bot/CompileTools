@@ -32,6 +32,19 @@ namespace CompileTools
         }
         public override void ConvertTo(Stream input, Stream output)
         {
+
+            // Things handled correctly:
+            // GAMEOVER.GDT (scanlined)
+            // big-text portion of TITLE1.GDT (scanlined)
+            // text from EVO chapter 1 title screen, non-scanlined
+            // above, with blocks of all colors, pure and plane versions
+
+            // Things not handled correctly:
+            // small-text portion of TITLE1.GDT (scanlined)
+            // game title screen (scanlined) (outputs 1kb file??)
+            //  - header is written correcctly, but no data...
+            // TITLE1.GDT full, scanlined and otherwise
+
             Bitmap bmp = new Bitmap(Bitmap.FromStream(input));
             WriteInt16(output, unchecked((short)0xE488));
             WriteInt32(output, 0);
