@@ -87,19 +87,23 @@ namespace CompileTools
                     {
                         int data = 0;
                         for (int dw = 0; dw < 8; dw++)                                // dw = difference in width; column in the block
+
                         {
                             // TODO: Looks like the planes are not just BRG, but comething like cyan-orange-lime...
-                            if (bmp.GetPixel(width + dw, height).B > 0 && plane == 0)
+                            //Console.WriteLine(((bmp.GetPixel(width + dw, height).ToArgb()) & 0xFFFFFF).ToString("X8"));
+                            // This encodes blue and white properly.
+                            // cyan -> white
+                            // orange -> fragmenting, breaks stuff
+                            // green -> white
+                            // red -> crashes
+                            // magenta -> crashes
+
+                            // seems like the red might be a problem. maybe this is an issue with what GetColor() returns?
+                            // maybe the binary or returns something unusual there?
+
+                            if (((bmp.GetPixel(width + dw, height).ToArgb() & GetColor(plane) ) & 0xFFFFFF) > 0)
                             {
                                 data |= 1 << (7 - dw);                    // append a binary 1; bitshift it into the correct position (high for left, low for right)
-                            }
-                            if (bmp.GetPixel(width + dw, height).R > 0 && plane == 1)
-                            {
-                                data |= 1 << (7 - dw);
-                            }
-                            if (bmp.GetPixel(width + dw, height).G > 0 && plane == 2)
-                            {
-                                data |= 1 << (7 - dw);
                             }
                         }
 
@@ -615,6 +619,7 @@ namespace CompileTools
                     return (int)0xFF00FF00;
                 return (int)0xFFFFFFFF;
 
+                //
                 // cyan + orange = light pink (0xffccff)
                 // cyan + lime =   light cyan (0x00ffff)
                 // orange + lime =     yellow (0xffff00)
