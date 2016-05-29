@@ -32,7 +32,6 @@ namespace CompileTools
         }
         public override void ConvertTo(Stream input, Stream output)
         {
-            // Current compression quality: Compresses GAMEOVER.GDT to 0x3bc6 bytes.
             Bitmap bmp = new Bitmap(Bitmap.FromStream(input));
             WriteInt16(output, unchecked((short)0xE488));
             WriteInt32(output, 0);
@@ -43,12 +42,12 @@ namespace CompileTools
             List<List<int>> planes = new List<List<int>>();
             int currentPlane = -1;
 
-            // blankPlane gets called a few times
             List<int> blankPlane = new List<int>(Enumerable.Repeat(0x00, bmp.Height / 2));
 
-            for (int width = 0; width < bmp.Width; width+=8)                          // considers 8 columns at a time
+            // we look at pixel (width + dw) a lot, and dw goes up to 8, so ensure it's in bounds here
+            for (int width = 0; width < (bmp.Width - 8); width+=8)
             {
-                // First, check if the block is entirely black. Then we can write "00-00-00" and skip it.
+                // First, check if the block is entirely black. If so, we can write "00-00-00" and skip it.
                 bool allBlack = true;
                 for (int height = 0; height < bmp.Height && allBlack; height += 2)
                 {
@@ -60,9 +59,10 @@ namespace CompileTools
                         }
                     }
                 }
+
                 if (allBlack)
                 {
-                    // Write a blank block, then move to the next block
+                    // Write a blank block, then proceed to the next block
                     output.WriteByte(0x00);
                     output.WriteByte(0x00);
                     output.WriteByte(0x00);
@@ -89,17 +89,31 @@ namespace CompileTools
                         for (int dw = 0; dw < 8; dw++)                                // dw = difference in width; column in the block
 
                         {
-                            // If the pixel's color contains any of that plane's specific color (BRG), it is part of the plane data.
-                            if (((bmp.GetPixel(width + dw, height).ToArgb() & GetIdealColor(plane) ) & 0xFFFFFF) > 0)
+                            // If the pixel's color contains a certain threshold of the plane's ideal RGB color, then it's part of that plane data.
+                            // pure color -> ingame color
+                            // #0000FF B  -> #0066FF (lighter blue)
+                            // #FF0000 R  -> #FF6600 (burnt orange)
+                            // #00FF00 G  -> #00FF00 (same green)
+
+                            if ((bmp.GetPixel(width + dw, height).B > 0) && plane == 0)
+                                // If there's any blue at all, add the data to the blue plane
                             {
-                                data |= 1 << (7 - dw);                    // append a binary 1; bitshift it into the correct position (high for left, low for right)
+                                data |= 1 << (7 - dw);
+                            }
+                            if ((bmp.GetPixel(width + dw, height).R > 0) && plane == 1)
+                                // if there's any red at all, add the data to the red plane
+                            {
+                                data |= 1 << (7 - dw);
+                            }
+                            if ((bmp.GetPixel(width + dw, height).G > 102) && plane == 2)
+                                // If there's green, but not the mere 0x66 green mixed in the burnt orange/light blue, add it
+                            {
+                                data |= 1 << (7 - dw);
                             }
                         }
 
                         planeData.Add(data);
                     }
-
-                    // Here, do calculations to figure out whether it'd be better to use a plane copying code.
 
                     planes.Add(planeData);
 
@@ -154,21 +168,27 @@ namespace CompileTools
                     planeRLE.Add(runLength);
 
                     // See if 0x10 (repeat previous plane) is a good option.
-                    int diffWithPreviousPlane = 0;
-                    List<int> xorWithPreviousPlane = new List<int>();
-                    for (int i = 0; i < planeData.Count; i++)
-                    {
-                        if (planeData[i] != planes[currentPlane-1][i])
-                        {
-                            xorWithPreviousPlane.Add(planeData[i] ^ planes[currentPlane - 1][i]);
-                            diffWithPreviousPlane++;
-                        }
-                        else
-                        {
-                            xorWithPreviousPlane.Add(0);
-                        }
-                    }
-                    Console.WriteLine("diff with previous plane: " + diffWithPreviousPlane);
+                    // TODO: This is not a good way of doing this. Hard to test, understand, etc.
+                    //int diffWithPreviousPlane = 0;
+                    //List<int> xorWithPreviousPlane = new List<int>();
+                    //for (int i = 0; i < planeData.Count; i++)
+                   // {
+                    //    if (planes[currentPlane][i] != planes[currentPlane-1][i])
+                     //   {
+                     //       //Console.WriteLine(xorWithPreviousPlane);
+                     //       Console.WriteLine("this data:" + planes[currentPlane][i]);
+                     //       Console.WriteLine("last data: " + planes[currentPlane - 1][i]);
+                            //int xor = planeData[i] ^ planes[currentPlane - 1][i];
+                            //Console.WriteLine("xor:" + xor);
+                            //xorWithPreviousPlane.Add(planeData[i] ^ planes[currentPlane - 1][i]);
+                     //       diffWithPreviousPlane++;
+                     //   }
+                        //else
+                        //{
+                        //    xorWithPreviousPlane.Add(0);
+                        // }
+                    //}
+                    //Console.WriteLine("diff with previous plane: " + diffWithPreviousPlane);
 
                     if (currentPlane == 0)
                     {
@@ -598,33 +618,13 @@ namespace CompileTools
             {
                 if (plane == 0)
                     // Values are used in FromArgb / ToArgb.
-                    // darker cyan
+                    // lighter blue
                     return (int)0xFF0066FF;
                 if (plane == 1)
                     // burnt orange
                     return (int)0xFFFF6600;
                 if (plane == 2)
-                    // lime green
-                    return (int)0xFF00FF00;
-                return (int)0xFFFFFFFF;
-            }
-        }
-
-        public int GetIdealColor(int plane)
-            // Returns the ARGB integer the plane would have if the game used pure red, blue, green.
-            // Used in bmp -> gdt.
-        {
-            unchecked
-            {
-                if (plane == 0)
-                    // Values are used in FromArgb / ToArgb.
-                    // blue
-                    return (int)0xFF0000FF;
-                if (plane == 1)
-                    // red
-                    return (int)0xFFFF0000;
-                if (plane == 2)
-                    // green
+                    // normal green
                     return (int)0xFF00FF00;
                 return (int)0xFFFFFFFF;
             }
