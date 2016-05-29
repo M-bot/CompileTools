@@ -89,19 +89,8 @@ namespace CompileTools
                         for (int dw = 0; dw < 8; dw++)                                // dw = difference in width; column in the block
 
                         {
-                            // TODO: Looks like the planes are not just BRG, but comething like cyan-orange-lime...
-                            //Console.WriteLine(((bmp.GetPixel(width + dw, height).ToArgb()) & 0xFFFFFF).ToString("X8"));
-                            // This encodes blue and white properly.
-                            // cyan -> white
-                            // orange -> fragmenting, breaks stuff
-                            // green -> white
-                            // red -> crashes
-                            // magenta -> crashes
-
-                            // seems like the red might be a problem. maybe this is an issue with what GetColor() returns?
-                            // maybe the binary or returns something unusual there?
-
-                            if (((bmp.GetPixel(width + dw, height).ToArgb() & GetColor(plane) ) & 0xFFFFFF) > 0)
+                            // If the pixel's color contains any of that plane's specific color (BRG), it is part of the plane data.
+                            if (((bmp.GetPixel(width + dw, height).ToArgb() & GetIdealColor(plane) ) & 0xFFFFFF) > 0)
                             {
                                 data |= 1 << (7 - dw);                    // append a binary 1; bitshift it into the correct position (high for left, low for right)
                             }
@@ -609,22 +598,35 @@ namespace CompileTools
             {
                 if (plane == 0)
                     // Values are used in FromArgb / ToArgb.
-                    // cyan-ish
+                    // darker cyan
                     return (int)0xFF0066FF;
                 if (plane == 1)
-                    // orange-red-ish
+                    // burnt orange
                     return (int)0xFFFF6600;
                 if (plane == 2)
-                    // lime-green
+                    // lime green
                     return (int)0xFF00FF00;
                 return (int)0xFFFFFFFF;
+            }
+        }
 
-                //
-                // cyan + orange = light pink (0xffccff)
-                // cyan + lime =   light cyan (0x00ffff)
-                // orange + lime =     yellow (0xffff00)
-                // all =                white (0xffffff)
-                // none =               black (0x000000)
+        public int GetIdealColor(int plane)
+            // Returns the ARGB integer the plane would have if the game used pure red, blue, green.
+            // Used in bmp -> gdt.
+        {
+            unchecked
+            {
+                if (plane == 0)
+                    // Values are used in FromArgb / ToArgb.
+                    // blue
+                    return (int)0xFF0000FF;
+                if (plane == 1)
+                    // red
+                    return (int)0xFFFF0000;
+                if (plane == 2)
+                    // green
+                    return (int)0xFF00FF00;
+                return (int)0xFFFFFFFF;
             }
         }
 
