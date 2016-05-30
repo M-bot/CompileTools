@@ -33,17 +33,18 @@ namespace CompileTools
         public override void ConvertTo(Stream input, Stream output)
         {
 
-            // Things handled correctly:
-            // GAMEOVER.GDT (scanlined)
-            // big-text portion of TITLE1.GDT (scanlined)
-            // text from EVO chapter 1 title screen, non-scanlined
-            // above, with blocks of all colors, pure and plane versions
+            // Input handled correctly:
+            // GAMEOVER.GDT
+            // MAP100.GDT (and likely other maps as well, but not tested)
+            // all title cards when cropped (remove bottom and right sides; they're only black anyway)
+            // EVO (SNES) chapter title 1
+            // above images with 16-bit color blocks pasted haphazardly
 
-            // Things not handled correctly:
-            // small-text portion of TITLE1.GDT (scanlined)
-            // game title screen (scanlined) (outputs 1kb file??)
-            //  - header is written correcctly, but no data...
-            // TITLE1.GDT full, scanlined and otherwise
+            // Inputs handled incorrectly:
+            // unedited title card images - smearing occurs
+            // game title screen (AV04B.GDT) - smearing occurs
+            // EVO chapter 1 title screen, doubled in size (but still 640x400 px) - smearing occurs
+            // 50% of scanlined images become blank if it's misaligned (you can shift the image up/down to fix this)
 
             Bitmap bmp = new Bitmap(Bitmap.FromStream(input));
             WriteInt16(output, unchecked((short)0xE488));
@@ -238,6 +239,13 @@ namespace CompileTools
                         }
                     }
                 }
+            }
+
+            if (output.Length == 11)
+            {
+                // It's probably misreading a scanliend image.
+                Console.WriteLine("Warning: Looks like the output image is blank.");
+                Console.WriteLine("If the input image has scanlines, try shifting it up or down a line.");
             }
         }
 
