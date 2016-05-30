@@ -33,10 +33,14 @@ namespace CompileTools
         public override void ConvertTo(Stream input, Stream output)
         {
 
+            // Current encoding functionality: Uses 0x04 (RLE) flag, that's it.
+            // Next step: Investigate how to implement 0x10 (repeat prevoius plane).
+
             // Input handled correctly:
             // GAMEOVER.GDT
             // MAP100.GDT (and likely other maps as well, but not tested)
-            // all title cards when cropped (remove bottom and right sides; they're only black anyway)
+            // all title cards when cropped a certain way (remove bottom and right sides; they're black anyway)
+            //     (it's actually quite finicky; seems to depend a lot on the image dimensions; furhter investigation needed)
             // EVO (SNES) chapter title 1
             // above images with 16-bit color blocks pasted haphazardly
 
@@ -46,6 +50,7 @@ namespace CompileTools
             // EVO chapter 1 title screen, doubled in size (but still 640x400 px) - smearing occurs
             // 50% of scanlined images become blank if it's misaligned (you can shift the image up/down to fix this)
 
+            // Create new bmp with header
             Bitmap bmp = new Bitmap(Bitmap.FromStream(input));
             WriteInt16(output, unchecked((short)0xE488));
             WriteInt32(output, 0);
@@ -54,11 +59,12 @@ namespace CompileTools
             output.WriteByte(0x11);
 
             List<List<int>> planes = new List<List<int>>();
-            int currentPlane = -1;
+            int currentPlane = 0;
 
+            // blankPlane will get called a lot, so create it here
             List<int> blankPlane = new List<int>(Enumerable.Repeat(0x00, bmp.Height / 2));
 
-            // we look at pixel (width + dw) a lot, and dw goes up to 8, so ensure it's in bounds here
+            // Look at the input bmp and consider it in 8-pixel-wide blocks:
             for (int width = 0; width < (bmp.Width - 8); width+=8)
             {
                 // First, check if the block is entirely black. If so, we can write "00-00-00" and skip it.
@@ -89,11 +95,14 @@ namespace CompileTools
                     continue;
                 }
 
-                for (int plane = 0; plane < 3; plane++)                               // for each plane (B R G):
+                // If it's not all black, consider it in terms of each plane (B R G)
+                // plane is which color plane (0, 1, 2); currentPlane is the plane number overall
+                for (int plane = 0; plane < 3; plane++, currentPlane++)
                 {
-                    // planeData is the raw line-by-line representation.
+                    // planeData is the integer representation of each line's data.
                     List<int> planeData = new List<int>();
-                    currentPlane++;
+
+                    //currentPlane++;
                     Console.WriteLine("Processing plane: " + currentPlane);
 
                    
@@ -130,6 +139,8 @@ namespace CompileTools
                     }
 
                     planes.Add(planeData);
+
+                    // Next, look for repeated plane data and build a RLE version of the plane
 
                     List<int?> planeRLE = new List<int?>();
                     int? runLengthData = null;
@@ -181,69 +192,20 @@ namespace CompileTools
                     planeRLE.Add(runLengthData);
                     planeRLE.Add(runLength);
 
-                    // See if 0x10 (repeat previous plane) is a good option.
-                    // TODO: This is not a good way of doing this. Hard to test, understand, etc.
-                    //int diffWithPreviousPlane = 0;
-                    //List<int> xorWithPreviousPlane = new List<int>();
-                    //for (int i = 0; i < planeData.Count; i++)
-                   // {
-                    //    if (planes[currentPlane][i] != planes[currentPlane-1][i])
-                     //   {
-                     //       //Console.WriteLine(xorWithPreviousPlane);
-                     //       Console.WriteLine("this data:" + planes[currentPlane][i]);
-                     //       Console.WriteLine("last data: " + planes[currentPlane - 1][i]);
-                            //int xor = planeData[i] ^ planes[currentPlane - 1][i];
-                            //Console.WriteLine("xor:" + xor);
-                            //xorWithPreviousPlane.Add(planeData[i] ^ planes[currentPlane - 1][i]);
-                     //       diffWithPreviousPlane++;
-                     //   }
-                        //else
-                        //{
-                        //    xorWithPreviousPlane.Add(0);
-                        // }
-                    //}
-                    //Console.WriteLine("diff with previous plane: " + diffWithPreviousPlane);
-
-                    if (currentPlane == 0)
+                    // Finally, write the data to the output stream.
+                    Console.WriteLine("writing RLE");
+                    output.WriteByte(0x04);
+                    foreach (int d in planeRLE)
                     {
-                        //Console.WriteLine("writing RLE");
-                        output.WriteByte(0x04);
-                        foreach (int d in planeRLE)
-                        {
-                            output.WriteByte((byte)d);
-                        }
+                        output.WriteByte((byte)d);
+                    }
 
-                    }
-                    else
-                    {
-                        //if (diffWithPreviousPlane == 0)
-                        //{
-                        //   // seems to be no restriction on how many 0x10s in a row.
-                        //    // But it gives me that lovely cyan instead of the white it should be... why?
-                        //    output.WriteByte(0x10);
-                        //    Console.WriteLine("repeat plane - 0x10");
-                        //}
-                        //else { 
-                        //    Console.WriteLine("writing RLE");
-                        //    output.WriteByte(0x04);
-                        //    foreach (int d in planeRLE)
-                        //   {
-                        //        output.WriteByte((byte)d);
-                        //}
-                        //}
-                        Console.WriteLine("writing RLE");
-                        output.WriteByte(0x04);
-                        foreach (int d in planeRLE)
-                        {
-                            output.WriteByte((byte)d);
-                        }
-                    }
                 }
             }
 
             if (output.Length == 11)
             {
-                // It's probably misreading a scanliend image.
+                // If it's just a header, it's probably misreading a scanlined image.
                 Console.WriteLine("Warning: Looks like the output image is blank.");
                 Console.WriteLine("If the input image has scanlines, try shifting it up or down a line.");
             }
