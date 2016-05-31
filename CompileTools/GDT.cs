@@ -35,6 +35,9 @@ namespace CompileTools
 
             // Current encoding functionality: Uses 0x04 (RLE) flag, that's it.
             // Next step: Investigate how to implement 0x10 (repeat prevoius plane).
+            
+            // TODO: see if the smearing problems get better by trying really hard to avoid collisions with preexisting flags.
+
 
             // Input handled correctly:
             // GAMEOVER.GDT
@@ -160,6 +163,7 @@ namespace CompileTools
                             }
                             else
                             {
+                                Console.WriteLine("runLength of " + runLengthData + " is " + runLength.ToString("X2"));
                                 // run length of 4 has its own prefix control code, due to collision with 0x04 plane definer.
                                 if (runLength == 4)
                                 {
@@ -167,6 +171,14 @@ namespace CompileTools
                                     planeRLE.Add(0x84);
                                     planeRLE.Add(runLengthData);
                                 }
+
+                                //else if ((runLength == 6) || (runLength == 8))
+                                //{
+                                //    for (int i = 0; i < runLength; i++)
+                                //    {
+                                //        planeRLE.Add(runLengthData);
+                                //    }
+                                //}
                                 else
                                 {
                                     // 0x04 only does run-length encoding on data with equal nibbles!! (often 0x00 or 0xFF)
@@ -189,6 +201,7 @@ namespace CompileTools
                         }
                     }
                     // Add the last run as well, which is not caught in the above loop.
+                    Console.WriteLine("final runLength of " + runLengthData + " is " + runLength);
                     planeRLE.Add(runLengthData);
                     planeRLE.Add(runLength);
 
