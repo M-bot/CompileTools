@@ -30,6 +30,7 @@ CompileTools is a romhacking program being developed mainly by M-bot, blacksmith
 ### Examples
 ```
  convert file.gmp       -> file.bmp
+ convert file.bmp gdt   -> file.gdt
  compress file.cnx      -> file.gmp
  compress file.gmp      -> file.cnx
  pack file.it3          -> file.it3_index + file (directory)

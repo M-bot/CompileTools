@@ -32,6 +32,28 @@ namespace CompileTools
         }
         public override void ConvertTo(Stream input, Stream output)
         {
+
+            // Current encoding functionality: Uses 0x04 (RLE) flag, that's it.
+            // Next step: Investigate how to implement 0x10 (repeat prevoius plane).
+            
+            // TODO: see if the smearing problems get better by trying really hard to avoid collisions with preexisting flags.
+
+
+            // Input handled correctly:
+            // GAMEOVER.GDT
+            // MAP100.GDT (and likely other maps as well, but not tested)
+            // all title cards when cropped a certain way (remove bottom and right sides; they're black anyway)
+            //     (it's actually quite finicky; seems to depend a lot on the image dimensions; furhter investigation needed)
+            // EVO (SNES) chapter title 1
+            // above images with 16-bit color blocks pasted haphazardly
+
+            // Inputs handled incorrectly:
+            // unedited title card images - smearing occurs
+            // game title screen (AV04B.GDT) - smearing occurs
+            // EVO chapter 1 title screen, doubled in size (but still 640x400 px) - smearing occurs
+            // 50% of scanlined images become blank if it's misaligned (you can shift the image up/down to fix this)
+
+            // Create new bmp with header
             Bitmap bmp = new Bitmap(Bitmap.FromStream(input));
             WriteInt16(output, unchecked((short)0xE488));
             WriteInt32(output, 0);
@@ -39,36 +61,166 @@ namespace CompileTools
             WriteInt16(output, (short)(bmp.Height/2));
             output.WriteByte(0x11);
 
-            for (int w = 0; w < bmp.Width; w+=8)
+            List<List<int>> planes = new List<List<int>>();
+            int currentPlane = 0;
+
+            // blankPlane will get called a lot, so create it here
+            List<int> blankPlane = new List<int>(Enumerable.Repeat(0x00, bmp.Height / 2));
+
+            // Look at the input bmp and consider it in 8-pixel-wide blocks:
+            for (int width = 0; width < (bmp.Width - 8); width+=8)
             {
-                for (int p = 0; p < 3; p++)
+                // First, check if the block is entirely black. If so, we can write "00-00-00" and skip it.
+                bool allBlack = true;
+                for (int height = 0; height < bmp.Height && allBlack; height += 2)
                 {
-                    output.WriteByte(0x04);
-                    for (int h = 0; h < bmp.Height; h+=2)
+                    for (int dw = 0; dw < 8 && allBlack; dw++)
                     {
-                        int data = 0;
-                        for (int dw = 0; dw < 8; dw++)
+                        if (bmp.GetPixel(width + dw, height).ToArgb() != Color.Black.ToArgb())
                         {
-                            if (bmp.GetPixel(w + dw, h).B > 0 && p == 0)
-                            {
-                                data |= 1 << (7 - dw);
-                            }
-                            if (bmp.GetPixel(w + dw, h).R > 0 && p == 1)
-                            {
-                                data |= 1 << (7 - dw);
-                            }
-                            if (bmp.GetPixel(w + dw, h).G > 0 && p == 2)
-                            {
-                                data |= 1 << (7 - dw);
-                            }
-                        }
-                        output.WriteByte((byte)data);
-                        if (data >> 4 == (data & 0xF))
-                        {
-                            output.WriteByte(0x01);
+                            allBlack = false;
                         }
                     }
                 }
+
+                if (allBlack)
+                {
+                    // Write a blank block, then proceed to the next block
+                    output.WriteByte(0x00);
+                    output.WriteByte(0x00);
+                    output.WriteByte(0x00);
+
+                    planes.Add(blankPlane);
+                    planes.Add(blankPlane);
+                    planes.Add(blankPlane);
+                    currentPlane += 3;
+
+                    continue;
+                }
+
+                // If it's not all black, consider it in terms of each plane (B R G)
+                // plane is which color plane (0, 1, 2); currentPlane is the plane number overall
+                for (int plane = 0; plane < 3; plane++, currentPlane++)
+                {
+                    // planeData is the integer representation of each line's data.
+                    List<int> planeData = new List<int>();
+
+                    //currentPlane++;
+                    Console.WriteLine("Processing plane: " + currentPlane);
+
+                   
+                    for (int height = 0; height < bmp.Height; height+=2)
+                    {
+                        int data = 0;
+                        for (int dw = 0; dw < 8; dw++)                                // dw = difference in width; column in the block
+
+                        {
+                            // If the pixel's color contains a certain threshold of the plane's ideal RGB color, then it's part of that plane data.
+                            // pure color -> ingame color
+                            // #0000FF B  -> #0066FF (lighter blue)
+                            // #FF0000 R  -> #FF6600 (burnt orange)
+                            // #00FF00 G  -> #00FF00 (same green)
+
+                            if ((bmp.GetPixel(width + dw, height).B > 0) && plane == 0)
+                                // If there's any blue at all, add the data to the blue plane
+                            {
+                                data |= 1 << (7 - dw);
+                            }
+                            if ((bmp.GetPixel(width + dw, height).R > 0) && plane == 1)
+                                // if there's any red at all, add the data to the red plane
+                            {
+                                data |= 1 << (7 - dw);
+                            }
+                            if ((bmp.GetPixel(width + dw, height).G > 102) && plane == 2)
+                                // If there's green, but not the mere 0x66 green mixed in the burnt orange/light blue, add it
+                            {
+                                data |= 1 << (7 - dw);
+                            }
+                        }
+
+                        planeData.Add(data);
+                    }
+
+                    planes.Add(planeData);
+
+                    // Next, look for repeated plane data and build a RLE version of the plane
+
+                    List<int?> planeRLE = new List<int?>();
+                    int? runLengthData = null;
+                    int runLength = 0;
+                    foreach (var data in planeData)
+                    {
+                        if (runLengthData == null)
+                        {
+                            runLengthData = data;
+                            runLength = 1;
+                        }
+                        else
+                        {
+                            if (data == runLengthData)
+                            {
+                                runLength++;
+                            }
+                            else
+                            {
+                                Console.WriteLine("runLength of " + runLengthData + " is " + runLength.ToString("X2"));
+                                // run length of 4 has its own prefix control code, due to collision with 0x04 plane definer.
+                                if (runLength == 4)
+                                {
+                                    planeRLE.Add(0xff);
+                                    planeRLE.Add(0x84);
+                                    planeRLE.Add(runLengthData);
+                                }
+
+                                //else if ((runLength == 6) || (runLength == 8))
+                                //{
+                                //    for (int i = 0; i < runLength; i++)
+                                //    {
+                                //        planeRLE.Add(runLengthData);
+                                //    }
+                                //}
+                                else
+                                {
+                                    // 0x04 only does run-length encoding on data with equal nibbles!! (often 0x00 or 0xFF)
+                                    if (runLengthData >> 4 == (runLengthData & 0xF))
+                                    {
+                                        planeRLE.Add(runLengthData);
+                                        planeRLE.Add(runLength);
+                                    }
+                                    else
+                                    {
+                                        for (int i=0; i<runLength; i++)
+                                        {
+                                            planeRLE.Add(runLengthData);
+                                        }
+                                    }
+                                }
+                                runLengthData = data;
+                                runLength = 1;
+                            }
+                        }
+                    }
+                    // Add the last run as well, which is not caught in the above loop.
+                    Console.WriteLine("final runLength of " + runLengthData + " is " + runLength);
+                    planeRLE.Add(runLengthData);
+                    planeRLE.Add(runLength);
+
+                    // Finally, write the data to the output stream.
+                    Console.WriteLine("writing RLE");
+                    output.WriteByte(0x04);
+                    foreach (int d in planeRLE)
+                    {
+                        output.WriteByte((byte)d);
+                    }
+
+                }
+            }
+
+            if (output.Length == 11)
+            {
+                // If it's just a header, it's probably misreading a scanlined image.
+                Console.WriteLine("Warning: Looks like the output image is blank.");
+                Console.WriteLine("If the input image has scanlines, try shifting it up or down a line.");
             }
         }
 
@@ -133,6 +285,7 @@ namespace CompileTools
                         wtf = false;
                         if ((datab & 0x8) == 0x8)
                         {
+                            // copy the blue plane of this block
                             CopyData(block, block, 0, plane);
                             wtf = true;
                         }
@@ -145,6 +298,8 @@ namespace CompileTools
 
                         if ((datat & 0x1) == 0x1)
                         {
+                            // if the flag begins with 0x1, copy the previous plane
+                            // if current plane is the blue plane, that means copy the (green?) plane of the previous block
                             CopyData(block + (plane == 0 ? -1 : 0), block, (plane + 2) % 3, plane);
                             wtf = true;
                         }
@@ -223,12 +378,13 @@ namespace CompileTools
                                 WriteData(block, plane, 0, data, height);
                                 break;
                             case 4:
+                                // description of the 0x04 plane encoding
                                 Console.ForegroundColor = ConsoleColor.Cyan;
                                 while (curLine < height)
                                 {
-                                    data = input.ReadByte();
-                                    datat = (data & 0xF0) >> 4;
-                                    datab = data & 0x0F;
+                                    data = input.ReadByte();       // first byte: direct binary representation of a line
+                                    datat = (data & 0xF0) >> 4;    // upper nibble
+                                    datab = data & 0x0F;           // lower nibble
                                     int count = 1;
 
                                     // Checking if nibbles equal each other
@@ -416,6 +572,7 @@ namespace CompileTools
                                         if (data % 2 == 1)
                                         {
                                             Color oldc = bmp.GetPixel(b * 8 + d, l * 2);
+                                            // take the binary or of what's already there and the current plane color
                                             Color newc = Color.FromArgb(oldc.ToArgb() | GetColor(p));
                                             bmp.SetPixel(b * 8 + d, l * 2, newc);
                                         }
@@ -456,10 +613,14 @@ namespace CompileTools
             unchecked
             {
                 if (plane == 0)
+                    // Values are used in FromArgb / ToArgb.
+                    // lighter blue
                     return (int)0xFF0066FF;
                 if (plane == 1)
+                    // burnt orange
                     return (int)0xFFFF6600;
                 if (plane == 2)
+                    // normal green
                     return (int)0xFF00FF00;
                 return (int)0xFFFFFFFF;
             }
@@ -468,7 +629,9 @@ namespace CompileTools
         public void WriteData(int block, int plane, int line, int data, int count)
         {
             if (wtf)
+                // wtf indeed!
             {
+                // hmm. when does this apply? data should be 0xFF at its highest, right?
                 if ((data & 0xFF00) > 0)
                 {
                     for (int l = 0; l < count / 2; l++)
@@ -482,6 +645,8 @@ namespace CompileTools
                 }
                 for (int l = 0; l < count; l++)
                 {
+                    // use the bitwise logical XOR between the data and... what's already there??
+                    // oh yeah, the plane that got copied with CopyData.
                     pixels[block, plane, line + l] ^= data;
                 }
             }
