@@ -35,6 +35,10 @@ namespace CompileTools
 
             // Current encoding functionality: Uses 0x04 (RLE) flag, that's it.
             // Next step: Investigate how to implement 0x10 (repeat prevoius plane).
+
+            // Things you can do to make images insert a little better:
+            // 1) Crop the bottom and right black portions of the title images. (just less data for the codec to screw up)
+            // 2) Make the image black and white (obviuosly undesirable but generally works pretty well)
             
             // TODO: see if the smearing problems get better by trying really hard to avoid collisions with preexisting flags.
 
@@ -46,12 +50,19 @@ namespace CompileTools
             //     (it's actually quite finicky; seems to depend a lot on the image dimensions; furhter investigation needed)
             // EVO (SNES) chapter title 1
             // above images with 16-bit color blocks pasted haphazardly
+            // black-and-white SkyeWelse title card
+            // title card cropped to 546x246
 
             // Inputs handled incorrectly:
             // unedited title card images - smearing occurs
             // game title screen (AV04B.GDT) - smearing occurs
             // EVO chapter 1 title screen, doubled in size (but still 640x400 px) - smearing occurs
             // 50% of scanlined images become blank if it's misaligned (you can shift the image up/down to fix this)
+            // colored Skyewelse title card (black screen)
+            
+            // Inputs maybe handled incorrectly??:
+            // odd-numbered heights?
+            // fully-sized 640x400 images (but not individually 640-wide or 400-tall images) - is something going on with the headers?
 
             // Create new bmp with header
             Bitmap bmp = new Bitmap(Bitmap.FromStream(input));
@@ -64,7 +75,7 @@ namespace CompileTools
             List<List<int>> planes = new List<List<int>>();
             int currentPlane = 0;
 
-            // blankPlane will get called a lot, so create it here
+            // blankPlane will get called a lot, so create it here. (Just an appropriately-sized array of zeroes.)
             List<int> blankPlane = new List<int>(Enumerable.Repeat(0x00, bmp.Height / 2));
 
             // Look at the input bmp and consider it in 8-pixel-wide blocks:
@@ -141,78 +152,112 @@ namespace CompileTools
                         planeData.Add(data);
                     }
 
+                    // Now, we can compare this data to previous planes and see if we can just copy it.
+                    // You can copy the previous plane (0x10? 0x14?) or the same color plane in the nth previous block (0x80?)
+                    // Use a Hamming distance function. If it's small, you can probably use one of the plane copiers to grab that plane
+                    // and add data with XOR.
+
+                    List<int> distances = new List<int>();
+
+                    // using the 0x8N plane copier, you can only copy one of the most recent 15 planes.
+                    int startPlane = (planes.Count > 15) ? planes.Count - 15 : 0;
+
+                    for (int comparePlane = startPlane; comparePlane < planes.Count; comparePlane++)
+                    {
+                        int distance = 0;
+                        for (int line = 0; line < planeData.Count; line++)
+                        {
+                            if (planes[comparePlane][line] != planeData[line])
+                            {
+                                distance++;
+                            }
+                        }
+                        Console.WriteLine("Distance from plane {0}: {1}", comparePlane, distance);
+                        distances.Add(distance);
+                    }
+                    int bestPlaneDistance = distances.Min();
+                    int bestPlaneIndex = startPlane + distances.IndexOf(bestPlaneDistance);
+
+                    Console.WriteLine("Best plane to copy would be {0}, which has distance {1}", bestPlaneIndex, bestPlaneDistance);
+
                     planes.Add(planeData);
 
-                    // Next, look for repeated plane data and build a RLE version of the plane
-
-                    List<int?> planeRLE = new List<int?>();
-                    int? runLengthData = null;
-                    int runLength = 0;
-                    foreach (var data in planeData)
+                    if (bestPlaneDistance == 0 && bestPlaneIndex == planes.Count - 2)
                     {
-                        if (runLengthData == null)
+                        Console.WriteLine("Just repeating the previous plane");
+                        output.WriteByte((byte)0x10);
+                    }
+                    else
+                    {
+                        // Build an RLE version of the plane.
+                        List<int?> planeRLE = new List<int?>();
+                        int? runLengthData = null;
+                        int runLength = 0;
+                        foreach (var data in planeData)
                         {
-                            runLengthData = data;
-                            runLength = 1;
-                        }
-                        else
-                        {
-                            if (data == runLengthData)
+                            if (runLengthData == null)
                             {
-                                runLength++;
-                            }
-                            else
-                            {
-                                Console.WriteLine("runLength of " + runLengthData + " is " + runLength.ToString("X2"));
-                                // run length of 4 has its own prefix control code, due to collision with 0x04 plane definer.
-                                if (runLength == 4)
-                                {
-                                    planeRLE.Add(0xff);
-                                    planeRLE.Add(0x84);
-                                    planeRLE.Add(runLengthData);
-                                }
-
-                                //else if ((runLength == 6) || (runLength == 8))
-                                //{
-                                //    for (int i = 0; i < runLength; i++)
-                                //    {
-                                //        planeRLE.Add(runLengthData);
-                                //    }
-                                //}
-                                else
-                                {
-                                    // 0x04 only does run-length encoding on data with equal nibbles!! (often 0x00 or 0xFF)
-                                    if (runLengthData >> 4 == (runLengthData & 0xF))
-                                    {
-                                        planeRLE.Add(runLengthData);
-                                        planeRLE.Add(runLength);
-                                    }
-                                    else
-                                    {
-                                        for (int i=0; i<runLength; i++)
-                                        {
-                                            planeRLE.Add(runLengthData);
-                                        }
-                                    }
-                                }
                                 runLengthData = data;
                                 runLength = 1;
                             }
+                            else
+                            {
+                                if (data == runLengthData)
+                                {
+                                    runLength++;
+                                }
+                                else
+                                {
+                                    Console.WriteLine("runLength of " + runLengthData + " is " + runLength.ToString("X2"));
+                                    // run length of 4 has its own prefix control code, due to collision with 0x04 plane definer.
+                                    if (runLength == 4)
+                                    {
+                                        planeRLE.Add(0xff);
+                                        planeRLE.Add(0x84);
+                                        planeRLE.Add(runLengthData);
+                                    }
+
+                                    //else if ((runLength == 6) || (runLength == 8))
+                                    //{
+                                    //    for (int i = 0; i < runLength; i++)
+                                    //    {
+                                    //        planeRLE.Add(runLengthData);
+                                    //    }
+                                    //}
+                                    else
+                                    {
+                                        // 0x04 only does run-length encoding on data that has two equal nibbles!! (often 0x00 or 0xFF)
+                                        if (runLengthData >> 4 == (runLengthData & 0xF))
+                                        {
+                                            planeRLE.Add(runLengthData);
+                                            planeRLE.Add(runLength);
+                                        }
+                                        else
+                                        {
+                                            for (int i = 0; i < runLength; i++)
+                                            {
+                                                planeRLE.Add(runLengthData);
+                                            }
+                                        }
+                                    }
+                                    runLengthData = data;
+                                    runLength = 1;
+                                }
+                            }
+                        }
+                        // Add the last run as well, which is not caught in the above loop.
+                        Console.WriteLine("final runLength of " + runLengthData + " is " + runLength);
+                        planeRLE.Add(runLengthData);
+                        planeRLE.Add(runLength);
+
+                        // Finally, write the data to the output stream.
+                        Console.WriteLine("writing RLE");
+                        output.WriteByte(0x04);
+                        foreach (int d in planeRLE)
+                        {
+                            output.WriteByte((byte)d);
                         }
                     }
-                    // Add the last run as well, which is not caught in the above loop.
-                    Console.WriteLine("final runLength of " + runLengthData + " is " + runLength);
-                    planeRLE.Add(runLengthData);
-                    planeRLE.Add(runLength);
-
-                    // Finally, write the data to the output stream.
-                    Console.WriteLine("writing RLE");
-                    output.WriteByte(0x04);
-                    foreach (int d in planeRLE)
-                    {
-                        output.WriteByte((byte)d);
-                    }
-
                 }
             }
 
