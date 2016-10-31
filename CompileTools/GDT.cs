@@ -73,6 +73,7 @@ namespace CompileTools
             output.WriteByte(0x11);
 
             List<List<int>> planes = new List<List<int>>();
+            List<Boolean> planesCopied = new List<Boolean>();
             int currentPlane = 0;
 
             // blankPlane will get called a lot, so create it here. (Just an appropriately-sized array of zeroes.)
@@ -104,6 +105,10 @@ namespace CompileTools
                     planes.Add(blankPlane);
                     planes.Add(blankPlane);
                     planes.Add(blankPlane);
+
+                    planesCopied.Add(false);
+                    planesCopied.Add(false);
+                    planesCopied.Add(false);
                     currentPlane += 3;
 
                     continue;
@@ -119,7 +124,6 @@ namespace CompileTools
                     //currentPlane++;
                     Console.WriteLine("Processing plane: " + currentPlane);
 
-                   
                     for (int height = 0; height < bmp.Height; height+=2)
                     {
                         int data = 0;
@@ -157,39 +161,65 @@ namespace CompileTools
                     // Use a Hamming distance function. If it's small, you can probably use one of the plane copiers to grab that plane
                     // and add data with XOR.
 
-                    List<int> distances = new List<int>();
+                    int bestPlaneDistance = 99999;
+                    int bestPlaneIndex = 99999;
 
-                    // using the 0x8N plane copier, you can only copy one of the most recent 15 planes.
-                    int startPlane = (planes.Count > 15) ? planes.Count - 15 : 0;
-
-                    for (int comparePlane = startPlane; comparePlane < planes.Count; comparePlane++)
+                    if (planes.Any())
                     {
-                        int distance = 0;
-                        for (int line = 0; line < planeData.Count; line++)
-                        {
-                            if (planes[comparePlane][line] != planeData[line])
-                            {
-                                distance++;
-                            }
-                        }
-                        Console.WriteLine("Distance from plane {0}: {1}", comparePlane, distance);
-                        distances.Add(distance);
-                    }
-                    int bestPlaneDistance = distances.Min();
-                    int bestPlaneIndex = startPlane + distances.IndexOf(bestPlaneDistance);
 
-                    Console.WriteLine("Best plane to copy would be {0}, which has distance {1}", bestPlaneIndex, bestPlaneDistance);
+                        List<int> distances = new List<int>();
+
+
+                        // using the 0x8N plane copier, you can only copy one of the most recent 15 planes.
+                        int startPlane = (planes.Count > 15) ? planes.Count - 15 : 0;
+
+                        for (int comparePlane = startPlane; comparePlane < planes.Count; comparePlane++)
+                        {
+                            if (planesCopied[comparePlane])
+                            {
+                                Console.WriteLine("That plane was already copied anyway");
+                                continue;
+                            }
+                            int distance = 0;
+                            for (int line = 0; line < planeData.Count; line++)
+                            {
+                                if (planes[comparePlane][line] != planeData[line])
+                                {
+                                    distance++;
+                                }
+                            }
+                            //Console.WriteLine("Distance from plane {0}: {1}", comparePlane, distance);
+                            distances.Add(distance);
+                        }
+                        bestPlaneDistance = distances.Min();
+                        bestPlaneIndex = startPlane + distances.IndexOf(bestPlaneDistance);
+
+                        Console.WriteLine("Best plane to copy would be {0}, which has distance {1}", bestPlaneIndex, bestPlaneDistance);
+
+                    }
 
                     planes.Add(planeData);
+                    int bestPlaneDiff = currentPlane - bestPlaneIndex;
 
                     if (bestPlaneDistance == 0 && bestPlaneIndex == planes.Count - 2)
                     {
                         Console.WriteLine("Just repeating the previous plane");
                         output.WriteByte((byte)0x10);
+                        planesCopied.Add(true);
+                    }
+                    
+                    // if it's the same plane in a different block, and its diff is 0...
+                    else if (bestPlaneDiff % 3 == 0 && bestPlaneDistance == 0) {
+                        Console.WriteLine("Copying plane {0}", bestPlaneIndex);
+                        int nthPrevBlock = (currentPlane - bestPlaneIndex) / 3;
+                        Console.WriteLine(0x80 + nthPrevBlock);
+                        output.WriteByte((byte)(0x80 + nthPrevBlock));
+                        planesCopied.Add(true);
                     }
                     else
                     {
                         // Build an RLE version of the plane.
+                        planesCopied.Add(false);
                         List<int?> planeRLE = new List<int?>();
                         int? runLengthData = null;
                         int runLength = 0;
@@ -208,7 +238,6 @@ namespace CompileTools
                                 }
                                 else
                                 {
-                                    Console.WriteLine("runLength of " + runLengthData + " is " + runLength.ToString("X2"));
                                     // run length of 4 has its own prefix control code, due to collision with 0x04 plane definer.
                                     if (runLength == 4)
                                     {
@@ -246,7 +275,6 @@ namespace CompileTools
                             }
                         }
                         // Add the last run as well, which is not caught in the above loop.
-                        Console.WriteLine("final runLength of " + runLengthData + " is " + runLength);
                         planeRLE.Add(runLengthData);
                         planeRLE.Add(runLength);
 
