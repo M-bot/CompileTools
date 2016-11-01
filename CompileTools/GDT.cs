@@ -33,36 +33,11 @@ namespace CompileTools
         public override void ConvertTo(Stream input, Stream output)
         {
 
-            // Current encoding functionality: Uses 0x04 (RLE) flag, that's it.
-            // Next step: Investigate how to implement 0x10 (repeat prevoius plane).
+            // Current encoding functionality: Uses 0x04 (RLE) flag, 0x10 (repeat previous plane), 0x8N (copy nth previous block's analogous plane).
 
             // Things you can do to make images insert a little better:
             // 1) Crop the bottom and right black portions of the title images. (just less data for the codec to screw up)
-            // 2) Make the image black and white (obviuosly undesirable but generally works pretty well)
-            
-            // TODO: see if the smearing problems get better by trying really hard to avoid collisions with preexisting flags.
-
-
-            // Input handled correctly:
-            // GAMEOVER.GDT
-            // MAP100.GDT (and likely other maps as well, but not tested)
-            // all title cards when cropped a certain way (remove bottom and right sides; they're black anyway)
-            //     (it's actually quite finicky; seems to depend a lot on the image dimensions; furhter investigation needed)
-            // EVO (SNES) chapter title 1
-            // above images with 16-bit color blocks pasted haphazardly
-            // black-and-white SkyeWelse title card
-            // title card cropped to 546x246
-
-            // Inputs handled incorrectly:
-            // unedited title card images - smearing occurs
-            // game title screen (AV04B.GDT) - smearing occurs
-            // EVO chapter 1 title screen, doubled in size (but still 640x400 px) - smearing occurs
-            // 50% of scanlined images become blank if it's misaligned (you can shift the image up/down to fix this)
-            // colored Skyewelse title card (black screen)
-            
-            // Inputs maybe handled incorrectly??:
-            // odd-numbered heights?
-            // fully-sized 640x400 images (but not individually 640-wide or 400-tall images) - is something going on with the headers?
+            // 2) Play with the dimensions of the images.
 
             // Create new bmp with header
             Bitmap bmp = new Bitmap(Bitmap.FromStream(input));
@@ -122,7 +97,7 @@ namespace CompileTools
                     List<int> planeData = new List<int>();
 
                     //currentPlane++;
-                    Console.WriteLine("Processing plane: " + currentPlane);
+                    Console.WriteLine("Processing plane {0}. {1} plane at {2}", currentPlane, currentPlane % 3, (currentPlane / 3)*8);
 
                     for (int height = 0; height < bmp.Height; height+=2)
                     {
@@ -177,7 +152,7 @@ namespace CompileTools
                         {
                             if (planesCopied[comparePlane])
                             {
-                                Console.WriteLine("That plane was already copied anyway");
+                                distances.Add(999);
                                 continue;
                             }
                             int distance = 0;
@@ -195,7 +170,6 @@ namespace CompileTools
                         bestPlaneIndex = startPlane + distances.IndexOf(bestPlaneDistance);
 
                         Console.WriteLine("Best plane to copy would be {0}, which has distance {1}", bestPlaneIndex, bestPlaneDistance);
-
                     }
 
                     planes.Add(planeData);
@@ -211,9 +185,14 @@ namespace CompileTools
                     // if it's the same plane in a different block, and its diff is 0...
                     else if (bestPlaneDiff % 3 == 0 && bestPlaneDistance == 0) {
                         Console.WriteLine("Copying plane {0}", bestPlaneIndex);
-                        int nthPrevBlock = (currentPlane - bestPlaneIndex) / 3;
-                        Console.WriteLine(0x80 + nthPrevBlock);
+                        // From the decoder:
+                        // CopyData(block - datab - 1, block, plane, plane);
+                        // copy the same plane from the block (bottom nibble - 1) blocks prior to the current block
+                        int nthPrevBlock = ((currentPlane - bestPlaneIndex) / 3) - 1;
+                        Console.WriteLine(nthPrevBlock);
                         output.WriteByte((byte)(0x80 + nthPrevBlock));
+                        output.WriteByte((byte)0xFF); // line
+                        output.WriteByte((byte)0x00); // data
                         planesCopied.Add(true);
                     }
                     else
