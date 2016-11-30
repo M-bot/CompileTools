@@ -131,6 +131,22 @@ namespace CompileTools
                         planeData.Add(data);
                     }
 
+                    // if it's all zeros, just write 0x00 and call it a day
+                    //for (var i=0; i<planeData.Count; i++)
+                    //{
+                     //   Console.Write("{0:X2} ", (int)planeData[i]);
+                    //}
+                    //Console.WriteLine("");
+                    if (planeData.Sum() == 0)
+                    {
+                        Console.WriteLine("Best to just encode 0x00");
+                        output.WriteByte((byte)0x00);
+
+                        planes.Add(planeData);
+                        planesCopied.Add(false);
+                        continue;
+                    }
+
                     // Now, we can compare this data to previous planes and see if we can just copy it.
                     // You can copy the previous plane (0x10? 0x14?) or the same color plane in the nth previous block (0x80?)
                     // Use a Hamming distance function. If it's small, you can probably use one of the plane copiers to grab that plane
@@ -169,7 +185,7 @@ namespace CompileTools
                         bestPlaneDistance = distances.Min();
                         bestPlaneIndex = startPlane + distances.IndexOf(bestPlaneDistance);
 
-                        Console.WriteLine("Best plane to copy would be {0}, which has distance {1}", bestPlaneIndex, bestPlaneDistance);
+                        //Console.WriteLine("Best plane to copy would be {0}, which has distance {1}", bestPlaneIndex, bestPlaneDistance);
                     }
 
                     planes.Add(planeData);
