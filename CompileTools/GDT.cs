@@ -134,9 +134,10 @@ namespace CompileTools
                     // if it's all zeros, just write 0x00 and call it a day
                     //for (var i=0; i<planeData.Count; i++)
                     //{
-                     //   Console.Write("{0:X2} ", (int)planeData[i]);
+                    //   Console.Write("{0:X2} ", (int)planeData[i]);
                     //}
                     //Console.WriteLine("");
+
                     if (planeData.Sum() == 0)
                     {
                         Console.WriteLine("Best to just encode 0x00");
@@ -218,6 +219,7 @@ namespace CompileTools
                         List<int?> planeRLE = new List<int?>();
                         int? runLengthData = null;
                         int runLength = 0;
+                        int row = 0;
                         foreach (var data in planeData)
                         {
                             if (runLengthData == null)
@@ -239,28 +241,68 @@ namespace CompileTools
                                         planeRLE.Add(0xff);
                                         planeRLE.Add(0x84);
                                         planeRLE.Add(runLengthData);
+                                        row += 4;
                                     }
-
-                                    //else if ((runLength == 6) || (runLength == 8))
-                                    //{
-                                    //    for (int i = 0; i < runLength; i++)
-                                    //    {
-                                    //        planeRLE.Add(runLengthData);
-                                    //    }
-                                    //}
                                     else
                                     {
                                         // 0x04 only does run-length encoding on data that has two equal nibbles!! (often 0x00 or 0xFF)
-                                        if (runLengthData >> 4 == (runLengthData & 0xF))
+                                        byte dataUpper = (byte)(runLengthData >> 4);
+                                        byte dataLower = (byte)(runLengthData & 0xF);
+                                        //if (runLengthData >> 4 == (runLengthData & 0xF))
+                                        if (dataUpper == dataLower)
                                         {
-                                            planeRLE.Add(runLengthData);
-                                            planeRLE.Add(runLength);
+                                            // Can't have a C byte in the upper byte of the run length.
+                                            // (Haven't really checked this yet.)
+                                            byte lengthUpper = (byte)(runLength >> 4);
+                                            //if (lengthUpper == (byte)0xC)
+                                            //{
+                                            //    Console.WriteLine("It's a C byte!");
+                                            //    Console.WriteLine(runLength);
+                                            //    if (runLength % 2 == 1)
+                                            //    {
+                                            //        Console.WriteLine(runLength / 2);
+                                            //        planeRLE.Add(runLengthData);
+                                            //        planeRLE.Add(runLength/2);
+                                            //        planeRLE.Add(runLengthData);
+                                            //        planeRLE.Add((runLength / 2) + 1);
+                                            //        row += runLength;
+                                            //    }
+                                            //    else
+                                            //    {
+                                            //        planeRLE.Add(runLengthData);
+                                            //        planeRLE.Add(runLength / 2);
+                                            //        planeRLE.Add(runLengthData);
+                                            //        planeRLE.Add(runLength / 2);
+                                            //        row += runLength;
+                                            //    }
+                                           // }
+                                            // Length can only go up to 7D; otherwise you need a 7E byte in front.
+                                            if (runLength > 0x7D)
+                                            {
+                                                Console.WriteLine("Length is pretty long, so use 2 bytes for the length");
+                                                planeRLE.Add(runLengthData);
+                                                planeRLE.Add(0x7e);
+                                                planeRLE.Add(runLength);
+                                                row += runLength;
+                                                Console.Write("{0} {1} {2}", runLengthData, 0x7e, runLength);
+                                                Console.WriteLine("");
+                                            }
+                                            else
+                                            {
+                                                planeRLE.Add(runLengthData);
+                                                planeRLE.Add(runLength);
+                                                row += runLength;
+                                                Console.Write("{0:X2} {1:X2} ", runLengthData, runLength);
+                                                Console.WriteLine("");
+                                            }
                                         }
                                         else
                                         {
                                             for (int i = 0; i < runLength; i++)
                                             {
+                                                Console.WriteLine("{0:X2} ", runLengthData);
                                                 planeRLE.Add(runLengthData);
+                                                row += 1;
                                             }
                                         }
                                     }
@@ -270,11 +312,21 @@ namespace CompileTools
                             }
                         }
                         // Add the last run as well, which is not caught in the above loop.
+                        Console.WriteLine("");
                         planeRLE.Add(runLengthData);
                         planeRLE.Add(runLength);
+                        Console.Write("{0:X2} {1:X2} ", runLengthData, runLength);
+                        row += runLength;
+                        Console.WriteLine("length: {0}", row);
 
                         // Finally, write the data to the output stream.
                         Console.WriteLine("writing RLE");
+                        for (var i=0; i<planeRLE.Count; i++)
+                        {
+                           Console.Write("{0:X2} ", (int)planeRLE[i]);
+                        }
+                        Console.WriteLine("");
+
                         output.WriteByte(0x04);
                         foreach (int d in planeRLE)
                         {
