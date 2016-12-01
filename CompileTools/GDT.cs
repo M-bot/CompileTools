@@ -314,7 +314,15 @@ namespace CompileTools
                         // Add the last run as well, which is not caught in the above loop.
                         Console.WriteLine("");
                         planeRLE.Add(runLengthData);
-                        planeRLE.Add(runLength);
+                        if (runLength > 0x7D)
+                        {
+                            planeRLE.Add(0x7e);
+                            planeRLE.Add(runLength);
+                        }
+                        else
+                        {
+                            planeRLE.Add(runLength);
+                        }
                         Console.Write("{0:X2} {1:X2} ", runLengthData, runLength);
                         row += runLength;
                         Console.WriteLine("length: {0}", row);
