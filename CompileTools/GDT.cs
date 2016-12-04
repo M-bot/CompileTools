@@ -132,11 +132,6 @@ namespace CompileTools
                     }
 
                     // if it's all zeros, just write 0x00 and call it a day
-                    //for (var i=0; i<planeData.Count; i++)
-                    //{
-                    //   Console.Write("{0:X2} ", (int)planeData[i]);
-                    //}
-                    //Console.WriteLine("");
 
                     if (planeData.Sum() == 0)
                     {
@@ -253,7 +248,7 @@ namespace CompileTools
                                         {
                                             // Can't have a C byte in the upper byte of the run length.
                                             // (Haven't really checked this yet.)
-                                            byte lengthUpper = (byte)(runLength >> 4);
+                                            //byte lengthUpper = (byte)(runLength >> 4);
                                             //if (lengthUpper == (byte)0xC)
                                             //{
                                             //    Console.WriteLine("It's a C byte!");
@@ -342,6 +337,11 @@ namespace CompileTools
                         }
                     }
                 }
+            }
+
+            for (var i=0; i<planesCopied.Count; i++)
+            {
+                Console.Write("{0}: {1} ", i, planesCopied[i]);
             }
 
             if (output.Length == 11)
