@@ -32,7 +32,6 @@ namespace CompileTools
         }
         public override void ConvertTo(Stream input, Stream output)
         {
-
             // Current encoding functionality: Uses 0x04 (RLE) flag, 0x10 (repeat previous plane), 0x8N (copy nth previous block's analogous plane).
 
             // Things you can do to make images insert a little better:
@@ -48,6 +47,7 @@ namespace CompileTools
             output.WriteByte(0x11);
 
             List<List<int>> planes = new List<List<int>>();
+
             List<Boolean> planesCopied = new List<Boolean>();
             int currentPlane = 0;
 
@@ -84,6 +84,7 @@ namespace CompileTools
                     planesCopied.Add(false);
                     planesCopied.Add(false);
                     planesCopied.Add(false);
+                    
                     currentPlane += 3;
 
                     continue;
@@ -130,7 +131,7 @@ namespace CompileTools
 
                         planeData.Add(data);
                     }
-
+                    
                     // if it's all zeros, just write 0x00 and call it a day
 
                     if (planeData.Sum() == 0)
@@ -336,8 +337,22 @@ namespace CompileTools
                             output.WriteByte((byte)d);
                         }
                     }
+                    // Add the last run as well, which is not caught in the above loop.
+                    Console.WriteLine("final runLength of " + runLengthData + " is " + runLength);
+                    planeRLE.Add(runLengthData);
+                    planeRLE.Add(runLength);
+
+                    // Finally, write the data to the output stream.
+                    Console.WriteLine("writing RLE");
+                    output.WriteByte(0x04);
+                    foreach (int d in planeRLE)
+                    {
+                        output.WriteByte((byte)d);
+                    }
+
                 }
             }
+
 
             for (var i=0; i<planesCopied.Count; i++)
             {
