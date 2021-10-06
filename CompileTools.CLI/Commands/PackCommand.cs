@@ -22,6 +22,9 @@ namespace CompileTools.CLI.Commands
 
             string method = args.Length > 1 ? "." + args[1] : ext;
             ArchiveMethod archiver = ArchiveMethod.FindArchiver(method);
+            if (method == ".it3_index")
+                method = ".it3";
+
             string outputFile = Path.GetFileNameWithoutExtension(file) + method;
 
             if (archiver == null)
