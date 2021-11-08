@@ -58,7 +58,7 @@ namespace CompileTools
             List<FileReference> output = new List<FileReference>(); 
             int count = 0;
             FileReference index = new FileReference(new MemoryStream(), Path.GetFileNameWithoutExtension(input.FileName) + ".it3_index", "");
-            for(int pointer = 0; pointer < input.Stream.Length; pointer++,count++)
+            for(int pointer = 0; pointer < input.Stream.Length; count++)
             {
                 string fourcc = ReadString(input.Stream, 4);
                 int size = ReadInt32(input.Stream);
